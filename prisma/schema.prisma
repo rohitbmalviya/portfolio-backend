@@ -1,0 +1,299 @@
+// =============================================================
+//  portfolio-backend — Prisma Schema
+//  DB: PostgreSQL  |  ORM: Prisma 5  |  IDs: cuid()
+//
+//  Structure source-of-truth: step4.md §3
+//  Content seed source-of-truth: step3.md
+// =============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ENUMS
+// ─────────────────────────────────────────────────────────────
+
+enum PageType {
+  HOME
+  PROJECTS
+  PROJECT_DETAIL
+  BLOG
+  BLOG_POST
+  ABOUT
+  CONTACT
+  CUSTOM
+}
+
+enum SectionType {
+  HERO
+  ABOUT
+  SKILLS
+  EXPERIENCE
+  FEATURED_PROJECTS
+  PROJECTS_GRID
+  BLOG_TEASER
+  ACHIEVEMENTS
+  EDUCATION
+  CONTACT
+  METRICS
+  RICH_TEXT
+  CTA
+  GALLERY
+}
+
+enum ProofType {
+  LIVE_DEMO
+  LIVE_LOGIN
+  ARCHITECTURE
+  NONE
+}
+
+enum SkillGroup {
+  LANGUAGES
+  FRONTEND
+  BACKEND
+  DATA
+  CLOUD_DEVOPS
+  AI
+}
+
+enum SkillLevel {
+  EXPERT
+  PROFICIENT
+  FAMILIAR
+}
+
+enum AchievementType {
+  AWARD
+  EDUCATION
+  MENTORING
+}
+
+enum DefaultTheme {
+  DARK
+  LIGHT
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PAGE  —  a URL-addressable page composed of ordered Sections
+// ─────────────────────────────────────────────────────────────
+
+model Page {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  title           String
+  type            PageType
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  navLabel        String?
+  navOrder        Int       @default(0)
+  showInNav       Boolean   @default(false)
+  published       Boolean   @default(true)
+  /// isSystem = true means this page is required by the app (cannot be deleted from admin)
+  isSystem        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sections Section[]
+
+  @@index([slug])
+  @@index([type])
+  @@index([showInNav, navOrder])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SECTION  —  a predefined-type content block on a Page
+//  data(Json) holds the per-type shape (see step4 §3.2)
+// ─────────────────────────────────────────────────────────────
+
+model Section {
+  id        String      @id @default(cuid())
+  pageId    String
+  type      SectionType
+  /// 0-based display order within the page
+  order     Int         @default(0)
+  enabled   Boolean     @default(true)
+  /// Flexible JSON payload — shape is determined by `type` (see step4 §3.2).
+  /// Typed in the shared-types package; stored as opaque JSON here.
+  data      Json        @default("{}")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, order])
+  @@index([pageId, enabled])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PROJECT
+// ─────────────────────────────────────────────────────────────
+
+model Project {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  title           String
+  oneLiner        String
+  role            String
+  tags            String[]
+  stack           String[]
+  /// Headline metric string displayed on the card (e.g. "148 Prisma models · ~185-endpoint backend")
+  metric          String
+  proofType       ProofType @default(NONE)
+  liveUrl         String?
+  /// Stored as JSON array of { url: string, alt: string }
+  screenshots     Json      @default("[]")
+  /// URL / path for the architecture diagram (SCB-style NDA projects)
+  architectureImg String?
+  /// Short overview paragraph shown in the detail page header
+  overview        String    @db.Text
+  /// "My Contribution" section — describes Rohit's specific role & work
+  contribution    String    @db.Text
+  /// Full MDX body for the detail page (architecture, stack deep-dive, lessons)
+  body            String    @db.Text
+  featured        Boolean   @default(false)
+  order           Int       @default(0)
+  published       Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([featured, order])
+  @@index([published, order])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BLOG POST
+// ─────────────────────────────────────────────────────────────
+
+model BlogPost {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String
+  coverImage  String?
+  tags        String[]
+  /// Full MDX body (authored in admin, rendered on public with syntax highlighting)
+  body        String    @db.Text
+  readingTime Int?
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([published, publishedAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SKILL
+// ─────────────────────────────────────────────────────────────
+
+model Skill {
+  id    String     @id @default(cuid())
+  group SkillGroup
+  name  String
+  level SkillLevel
+  order Int        @default(0)
+
+  @@index([group, order])
+  @@index([level])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  EXPERIENCE
+// ─────────────────────────────────────────────────────────────
+
+model Experience {
+  id        String   @id @default(cuid())
+  role      String
+  company   String
+  location  String
+  /// ISO date string "YYYY-MM-DD"
+  startDate String
+  /// ISO date string or "Present"
+  endDate   String
+  bullets   String[]
+  order     Int      @default(0)
+
+  @@index([order])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ACHIEVEMENT  (awards, education, mentoring)
+// ─────────────────────────────────────────────────────────────
+
+model Achievement {
+  id          String          @id @default(cuid())
+  title       String
+  description String
+  year        String?
+  type        AchievementType
+  order       Int             @default(0)
+
+  @@index([type, order])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SITE SETTINGS  —  singleton row (id = "singleton")
+// ─────────────────────────────────────────────────────────────
+
+model SiteSettings {
+  /// Always "singleton" — enforced by the upsert pattern in the API.
+  id            String       @id @default("singleton")
+  name          String
+  tagline       String
+  email         String
+  location      String
+  /// JSON: { github: string, linkedin: string, twitter?: string }
+  socials       Json
+  resumeUrl     String?
+  defaultTheme  DefaultTheme @default(DARK)
+  brandAccent   String?
+  footerText    String?
+  ogTitle       String?
+  ogDescription String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MEDIA  —  Cloudinary-backed asset record
+// ─────────────────────────────────────────────────────────────
+
+model Media {
+  id           String   @id @default(cuid())
+  cloudinaryUrl String
+  publicId     String   @unique
+  alt          String?
+  width        Int?
+  height       Int?
+  /// e.g. "image/jpeg", "image/png", "image/webp"
+  type         String?
+  createdAt    DateTime @default(now())
+
+  @@index([publicId])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ADMIN USER  —  single admin (Rohit); seeded from env
+// ─────────────────────────────────────────────────────────────
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([email])
+}
