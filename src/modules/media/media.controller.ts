@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   UploadedFile,
   UseGuards,
@@ -21,7 +22,7 @@ import {
 } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import { MediaService } from './media.service';
-import { CreateMediaDto } from './dto/create-media.dto';
+import { CreateMediaDto, UpdateMediaDto } from './dto/create-media.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('media')
@@ -75,6 +76,15 @@ export class MediaController {
     @Body() dto: CreateMediaDto,
   ) {
     return { data: await this.mediaService.uploadFile(file, dto) };
+  }
+
+  // ── PATCH /api/media/:id — admin (update category / alt) ─────────────────
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Admin] Update a media asset’s category or alt text' })
+  async update(@Param('id') id: string, @Body() dto: UpdateMediaDto) {
+    return { data: await this.mediaService.update(id, dto) };
   }
 
   // ── DELETE /api/media/:id — admin ────────────────────────────────────────

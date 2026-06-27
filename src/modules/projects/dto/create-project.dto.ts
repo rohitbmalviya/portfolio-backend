@@ -2,15 +2,12 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsBoolean,
-  IsEnum,
   IsInt,
-  IsObject,
   IsOptional,
   IsString,
   IsUrl,
   Min,
 } from 'class-validator';
-import { ProofType } from '@prisma/client';
 
 export class CreateProjectDto {
   @ApiProperty({ example: 'my-project' })
@@ -45,11 +42,6 @@ export class CreateProjectDto {
   @IsString()
   metric: string;
 
-  @ApiPropertyOptional({ enum: ProofType, default: ProofType.NONE })
-  @IsEnum(ProofType)
-  @IsOptional()
-  proofType?: ProofType;
-
   @ApiPropertyOptional()
   @IsUrl()
   @IsOptional()
@@ -57,16 +49,11 @@ export class CreateProjectDto {
 
   @ApiPropertyOptional({
     description: 'JSON array of { url: string, alt: string }',
-    type: 'object',
+    type: 'array',
   })
-  @IsObject()
+  @IsArray()
   @IsOptional()
   screenshots?: Record<string, unknown>[];
-
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
-  architectureImg?: string;
 
   @ApiProperty()
   @IsString()

@@ -1,8 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { SkillGroup } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
 import { ReorderSkillsDto } from './dto/reorder-skills.dto';
+
+// Canonical group order + display labels (single source of truth for grouping).
+const GROUP_ORDER: SkillGroup[] = [
+  'LANGUAGES',
+  'FRONTEND',
+  'BACKEND',
+  'DATA',
+  'CLOUD_DEVOPS',
+  'AI',
+];
+const GROUP_LABELS: Record<SkillGroup, string> = {
+  LANGUAGES: 'Languages',
+  FRONTEND: 'Frontend',
+  BACKEND: 'Backend',
+  DATA: 'Data',
+  CLOUD_DEVOPS: 'Cloud / DevOps',
+  AI: 'AI',
+};
 
 @Injectable()
 export class SkillsService {
@@ -21,6 +40,18 @@ export class SkillsService {
     return this.prisma.skill.findMany({
       orderBy: [{ group: 'asc' }, { order: 'asc' }],
     });
+  }
+
+  // ── Skills grouped by category (canonical order; empty groups omitted) ────
+  async findAllGrouped() {
+    const skills = await this.prisma.skill.findMany({ orderBy: { order: 'asc' } });
+    return GROUP_ORDER.map((group) => ({
+      group,
+      label: GROUP_LABELS[group],
+      skills: skills
+        .filter((s) => s.group === group)
+        .sort((a, b) => a.order - b.order),
+    })).filter((g) => g.skills.length > 0);
   }
 
   findOne(id: string) {

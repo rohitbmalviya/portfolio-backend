@@ -47,13 +47,6 @@ enum SectionType {
   GALLERY
 }
 
-enum ProofType {
-  LIVE_DEMO
-  LIVE_LOGIN
-  ARCHITECTURE
-  NONE
-}
-
 enum SkillGroup {
   LANGUAGES
   FRONTEND
@@ -69,12 +62,6 @@ enum SkillLevel {
   FAMILIAR
 }
 
-enum AchievementType {
-  AWARD
-  EDUCATION
-  MENTORING
-}
-
 enum DefaultTheme {
   DARK
   LIGHT
@@ -87,7 +74,9 @@ enum DefaultTheme {
 model Page {
   id              String    @id @default(cuid())
   slug            String    @unique
-  title           String
+  /// Title must also be unique across pages. Migration required after this change:
+  ///   npx prisma migrate dev --name add_page_title_unique
+  title           String    @unique
   type            PageType
   metaTitle       String?
   metaDescription String?
@@ -146,12 +135,9 @@ model Project {
   stack           String[]
   /// Headline metric string displayed on the card (e.g. "148 Prisma models · ~185-endpoint backend")
   metric          String
-  proofType       ProofType @default(NONE)
   liveUrl         String?
   /// Stored as JSON array of { url: string, alt: string }
   screenshots     Json      @default("[]")
-  /// URL / path for the architecture diagram (SCB-style NDA projects)
-  architectureImg String?
   /// Short overview paragraph shown in the detail page header
   overview        String    @db.Text
   /// "My Contribution" section — describes Rohit's specific role & work
@@ -212,16 +198,38 @@ model Skill {
 // ─────────────────────────────────────────────────────────────
 
 model Experience {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   role      String
   company   String
   location  String
-  /// ISO date string "YYYY-MM-DD"
-  startDate String
-  /// ISO date string or "Present"
-  endDate   String
+  startDate DateTime
+  /// null = "Present" (current role)
+  endDate   DateTime?
+  /// Optional company logo — Cloudinary URL
+  logo      String?
   bullets   String[]
-  order     Int      @default(0)
+  order     Int       @default(0)
+
+  @@index([order])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  EDUCATION  (degrees, institutions)
+//  NOTE: adding this model requires a migration —
+//  run `npx prisma migrate dev --name add_education`.
+// ─────────────────────────────────────────────────────────────
+
+model Education {
+  id        String    @id @default(cuid())
+  degree    String
+  school    String
+  startDate DateTime
+  /// null = ongoing / "Present" (currently studying)
+  endDate   DateTime?
+  detail    String?
+  /// Optional institution logo — Cloudinary URL
+  logo      String?
+  order     Int       @default(0)
 
   @@index([order])
 }
@@ -231,14 +239,16 @@ model Experience {
 // ─────────────────────────────────────────────────────────────
 
 model Achievement {
-  id          String          @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   description String
-  year        String?
-  type        AchievementType
-  order       Int             @default(0)
+  /// Date the achievement was earned (null = unspecified)
+  date        DateTime?
+  /// Optional photo (e.g. award certificate) — Cloudinary URL
+  image       String?
+  order       Int       @default(0)
 
-  @@index([type, order])
+  @@index([order])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -277,14 +287,35 @@ model Media {
   height       Int?
   /// e.g. "image/jpeg", "image/png", "image/webp"
   type         String?
+  /// Library grouping, e.g. "Projects", "Blog", "Awards", "Profile", "Misc"
+  category     String   @default("Misc")
   createdAt    DateTime @default(now())
 
   @@index([publicId])
+  @@index([category])
 }
 
 // ─────────────────────────────────────────────────────────────
 //  ADMIN USER  —  single admin (Rohit); seeded from env
 // ─────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  CONFIGURATION  — admin-editable option lists for dropdowns
+//  (e.g. contact link types, social link types, media categories).
+//  NOTE: schema enums (PageType, SectionType, SkillGroup, …) stay
+//  code-defined and are served read-only via GET /api/config/enums.
+// ─────────────────────────────────────────────────────────────
+
+model Configuration {
+  id        String   @id @default(cuid())
+  /// Stable key, e.g. "contact_link_types"
+  key       String   @unique
+  label     String
+  /// JSON array of { value: string, label: string }
+  items     Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 model AdminUser {
   id           String    @id @default(cuid())

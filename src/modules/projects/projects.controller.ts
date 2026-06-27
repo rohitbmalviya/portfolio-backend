@@ -40,6 +40,16 @@ export class ProjectsController {
     return { data };
   }
 
+  // ── GET /api/projects/id/:id — admin (look up by primary key) ────────────
+  // Must be declared BEFORE :slug so Express doesn't treat "id" as a slug.
+  @UseGuards(JwtAuthGuard)
+  @Get('id/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Admin] Get a project by its ID' })
+  async findOneById(@Param('id') id: string) {
+    return { data: await this.projectsService.findById(id) };
+  }
+
   // ── GET /api/projects/:slug — public ────────────────────────────────────
   @Get(':slug')
   @ApiOperation({ summary: 'Get a project by slug. Pass ?admin=true for unpublished.' })

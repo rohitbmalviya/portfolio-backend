@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CloudinaryProvider } from './cloudinary.provider';
-import { CreateMediaDto } from './dto/create-media.dto';
+import { CreateMediaDto, UpdateMediaDto } from './dto/create-media.dto';
 
 // Allowed MIME types
 const ALLOWED_MIME_TYPES = new Set([
@@ -17,6 +17,7 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/webp',
   'image/gif',
   'image/svg+xml',
+  'application/pdf', // résumé / document uploads
 ]);
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -76,11 +77,21 @@ export class MediaService {
         width: result.width,
         height: result.height,
         type: file.mimetype,
+        category: dto.category ?? 'Misc',
       },
     });
 
     this.logger.log(`Uploaded: ${result.publicId}`);
     return media;
+  }
+
+  // ── Update metadata (category / alt) ─────────────────────────────────────
+  async update(id: string, dto: UpdateMediaDto) {
+    const existing = await this.prisma.media.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException(`Media "${id}" not found.`);
+    }
+    return this.prisma.media.update({ where: { id }, data: dto });
   }
 
   // ── Delete from Cloudinary + DB ──────────────────────────────────────────
@@ -90,11 +101,14 @@ export class MediaService {
       throw new NotFoundException(`Media "${id}" not found.`);
     }
 
-    try {
-      await this.cloudinary.deleteByPublicId(media.publicId);
-    } catch (err: unknown) {
-      // Log but don't block DB cleanup if Cloudinary delete fails
-      this.logger.warn(`Cloudinary delete failed for "${media.publicId}": ${String(err)}`);
+    // Seeded local assets (publicId "local/…") aren't on Cloudinary — skip.
+    if (!media.publicId.startsWith('local/')) {
+      try {
+        await this.cloudinary.deleteByPublicId(media.publicId);
+      } catch (err: unknown) {
+        // Log but don't block DB cleanup if Cloudinary delete fails
+        this.logger.warn(`Cloudinary delete failed for "${media.publicId}": ${String(err)}`);
+      }
     }
 
     return this.prisma.media.delete({ where: { id } });

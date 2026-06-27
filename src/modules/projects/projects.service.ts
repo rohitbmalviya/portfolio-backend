@@ -31,11 +31,24 @@ export class ProjectsService {
     });
   }
 
-  // ── Admin: list all projects ─────────────────────────────────────────────
+  // ── Admin: single project by ID (any status) ─────────────────────────────
+  findById(id: string) {
+    return this.findOrThrow(id);
+  }
+
+  // ── Admin: list all projects (trimmed to the fields the list UI needs) ────
   findAllAdmin(featured?: boolean) {
     return this.prisma.project.findMany({
       where: featured === true ? { featured: true } : undefined,
       orderBy: { order: 'asc' },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        featured: true,
+        published: true,
+        order: true,
+      },
     });
   }
 

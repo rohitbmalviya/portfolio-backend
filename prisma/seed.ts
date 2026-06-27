@@ -13,9 +13,9 @@
  * Structure source-of-truth: step4.md §3
  */
 
-import 'dotenv/config';
-import { PrismaClient, Prisma } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import "dotenv/config";
+import { PrismaClient, Prisma } from "@prisma/client";
+import * as bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
@@ -33,29 +33,29 @@ function requireEnv(key: string): string {
 
 async function seedSiteSettings(): Promise<void> {
   await prisma.siteSettings.upsert({
-    where: { id: 'singleton' },
+    where: { id: "singleton" },
     update: {},
     create: {
-      id: 'singleton',
-      name: 'Rohit Malviya',
+      id: "singleton",
+      name: "Rohit Malviya",
       tagline:
-        'Full-stack engineer who ships production systems end-to-end — from a bank-grade Monte Carlo engine to multi-tenant SaaS — across TypeScript, Go, Python & Java.',
-      email: 'rohitbmalviya@gmail.com',
-      location: 'Pune, India',
+        "Full-stack engineer who ships production systems end-to-end — from a bank-grade Monte Carlo engine to multi-tenant SaaS — across TypeScript, Go, Python & Java.",
+      email: "rohitbmalviya@gmail.com",
+      location: "Pune, India",
       socials: {
-        github: 'https://github.com/rohithumancloud',
-        linkedin: 'https://linkedin.com/in/rohitbmalviya',
+        github: "https://github.com/rohithumancloud",
+        linkedin: "https://linkedin.com/in/rohitbmalviya",
       } satisfies Prisma.InputJsonValue,
-      resumeUrl: '/resume.pdf',
-      defaultTheme: 'DARK',
-      brandAccent: '#22d3ee', // cyan-400
-      footerText: 'Designed & built by Rohit Malviya — Next.js + Tailwind',
-      ogTitle: 'Rohit Malviya — Full-Stack Engineer',
+      resumeUrl: "/resume.pdf",
+      defaultTheme: "DARK",
+      brandAccent: "#22d3ee", // cyan-400
+      footerText: "Designed & built by Rohit Malviya — Next.js + Tailwind",
+      ogTitle: "Rohit Malviya — Full-Stack Engineer",
       ogDescription:
-        'Full-stack engineer (2+ yrs) building production SaaS & bank-grade systems across TypeScript, Go, Python & Java. Architected a Monte Carlo platform for Siam Commercial Bank; owns large backends & multi-role frontends.',
+        "Full-stack engineer (2+ yrs) building production SaaS & bank-grade systems across TypeScript, Go, Python & Java. Architected a Monte Carlo platform for Siam Commercial Bank; owns large backends & multi-role frontends.",
     },
   });
-  console.log('  ✓ SiteSettings');
+  console.log("  ✓ SiteSettings");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,9 +63,9 @@ async function seedSiteSettings(): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function seedAdminUser(): Promise<void> {
-  const email = requireEnv('ADMIN_EMAIL');
-  const password = requireEnv('ADMIN_PASSWORD');
-  const name = requireEnv('ADMIN_NAME');
+  const email = requireEnv("ADMIN_EMAIL");
+  const password = requireEnv("ADMIN_PASSWORD");
+  const name = requireEnv("ADMIN_NAME");
 
   const passwordHash = await bcrypt.hash(password, 12);
 
@@ -87,63 +87,94 @@ async function seedAdminUser(): Promise<void> {
 
 async function seedSkills(): Promise<void> {
   const skills: Array<{
-    group: 'LANGUAGES' | 'FRONTEND' | 'BACKEND' | 'DATA' | 'CLOUD_DEVOPS' | 'AI';
+    group:
+      | "LANGUAGES"
+      | "FRONTEND"
+      | "BACKEND"
+      | "DATA"
+      | "CLOUD_DEVOPS"
+      | "AI";
     name: string;
-    level: 'EXPERT' | 'PROFICIENT' | 'FAMILIAR';
+    level: "EXPERT" | "PROFICIENT" | "FAMILIAR";
     order: number;
   }> = [
     // LANGUAGES
-    { group: 'LANGUAGES', name: 'TypeScript', level: 'EXPERT', order: 0 },
-    { group: 'LANGUAGES', name: 'Go', level: 'PROFICIENT', order: 1 },
-    { group: 'LANGUAGES', name: 'Python', level: 'PROFICIENT', order: 2 },
-    { group: 'LANGUAGES', name: 'Java', level: 'FAMILIAR', order: 3 },
-    { group: 'LANGUAGES', name: 'Dart', level: 'FAMILIAR', order: 4 },
+    { group: "LANGUAGES", name: "TypeScript", level: "EXPERT", order: 0 },
+    { group: "LANGUAGES", name: "Go", level: "PROFICIENT", order: 1 },
+    { group: "LANGUAGES", name: "Python", level: "PROFICIENT", order: 2 },
+    { group: "LANGUAGES", name: "Java", level: "FAMILIAR", order: 3 },
+    { group: "LANGUAGES", name: "Dart", level: "FAMILIAR", order: 4 },
 
     // FRONTEND
-    { group: 'FRONTEND', name: 'Angular 18/19', level: 'EXPERT', order: 0 },
-    { group: 'FRONTEND', name: 'Next.js', level: 'EXPERT', order: 1 },
-    { group: 'FRONTEND', name: 'React', level: 'EXPERT', order: 2 },
-    { group: 'FRONTEND', name: 'Tailwind CSS', level: 'EXPERT', order: 3 },
-    { group: 'FRONTEND', name: 'RxJS', level: 'PROFICIENT', order: 4 },
-    { group: 'FRONTEND', name: 'Signals (Angular)', level: 'PROFICIENT', order: 5 },
-    { group: 'FRONTEND', name: 'Reactive Forms', level: 'PROFICIENT', order: 6 },
+    { group: "FRONTEND", name: "Angular 18/19", level: "EXPERT", order: 0 },
+    { group: "FRONTEND", name: "Next.js", level: "EXPERT", order: 1 },
+    { group: "FRONTEND", name: "React", level: "EXPERT", order: 2 },
+    { group: "FRONTEND", name: "Tailwind CSS", level: "EXPERT", order: 3 },
+    { group: "FRONTEND", name: "RxJS", level: "PROFICIENT", order: 4 },
+    {
+      group: "FRONTEND",
+      name: "Signals (Angular)",
+      level: "PROFICIENT",
+      order: 5,
+    },
+    {
+      group: "FRONTEND",
+      name: "Reactive Forms",
+      level: "PROFICIENT",
+      order: 6,
+    },
 
     // BACKEND
-    { group: 'BACKEND', name: 'Node.js / Express', level: 'EXPERT', order: 0 },
-    { group: 'BACKEND', name: 'NestJS', level: 'PROFICIENT', order: 1 },
-    { group: 'BACKEND', name: 'FastAPI', level: 'PROFICIENT', order: 2 },
-    { group: 'BACKEND', name: 'Gin (Go)', level: 'PROFICIENT', order: 3 },
-    { group: 'BACKEND', name: 'REST APIs', level: 'EXPERT', order: 4 },
-    { group: 'BACKEND', name: 'Microservices', level: 'PROFICIENT', order: 5 },
-    { group: 'BACKEND', name: 'Spring Boot', level: 'FAMILIAR', order: 6 },
+    { group: "BACKEND", name: "Node.js / Express", level: "EXPERT", order: 0 },
+    { group: "BACKEND", name: "NestJS", level: "PROFICIENT", order: 1 },
+    { group: "BACKEND", name: "FastAPI", level: "PROFICIENT", order: 2 },
+    { group: "BACKEND", name: "Gin (Go)", level: "PROFICIENT", order: 3 },
+    { group: "BACKEND", name: "REST APIs", level: "EXPERT", order: 4 },
+    { group: "BACKEND", name: "Microservices", level: "PROFICIENT", order: 5 },
+    { group: "BACKEND", name: "Spring Boot", level: "FAMILIAR", order: 6 },
 
     // DATA
-    { group: 'DATA', name: 'PostgreSQL', level: 'EXPERT', order: 0 },
-    { group: 'DATA', name: 'Prisma', level: 'EXPERT', order: 1 },
-    { group: 'DATA', name: 'Redis', level: 'PROFICIENT', order: 2 },
-    { group: 'DATA', name: 'TypeORM', level: 'PROFICIENT', order: 3 },
-    { group: 'DATA', name: 'MongoDB', level: 'PROFICIENT', order: 4 },
-    { group: 'DATA', name: 'Elasticsearch', level: 'FAMILIAR', order: 5 },
-    { group: 'DATA', name: 'Oracle', level: 'FAMILIAR', order: 6 },
-    { group: 'DATA', name: 'SQLAlchemy', level: 'FAMILIAR', order: 7 },
+    { group: "DATA", name: "PostgreSQL", level: "EXPERT", order: 0 },
+    { group: "DATA", name: "Prisma", level: "EXPERT", order: 1 },
+    { group: "DATA", name: "Redis", level: "PROFICIENT", order: 2 },
+    { group: "DATA", name: "TypeORM", level: "PROFICIENT", order: 3 },
+    { group: "DATA", name: "MongoDB", level: "PROFICIENT", order: 4 },
+    { group: "DATA", name: "Elasticsearch", level: "FAMILIAR", order: 5 },
+    { group: "DATA", name: "Oracle", level: "FAMILIAR", order: 6 },
+    { group: "DATA", name: "SQLAlchemy", level: "FAMILIAR", order: 7 },
 
     // CLOUD / DEVOPS
-    { group: 'CLOUD_DEVOPS', name: 'Docker', level: 'PROFICIENT', order: 0 },
-    { group: 'CLOUD_DEVOPS', name: 'Kubernetes', level: 'PROFICIENT', order: 1 },
-    { group: 'CLOUD_DEVOPS', name: 'Helm', level: 'PROFICIENT', order: 2 },
-    { group: 'CLOUD_DEVOPS', name: 'GCP', level: 'PROFICIENT', order: 3 },
-    { group: 'CLOUD_DEVOPS', name: 'AWS', level: 'PROFICIENT', order: 4 },
-    { group: 'CLOUD_DEVOPS', name: 'GitHub Actions', level: 'PROFICIENT', order: 5 },
-    { group: 'CLOUD_DEVOPS', name: 'Jenkins', level: 'PROFICIENT', order: 6 },
-    { group: 'CLOUD_DEVOPS', name: 'BullMQ / ARQ', level: 'PROFICIENT', order: 7 },
-    { group: 'CLOUD_DEVOPS', name: 'Stripe', level: 'PROFICIENT', order: 8 },
+    { group: "CLOUD_DEVOPS", name: "Docker", level: "PROFICIENT", order: 0 },
+    {
+      group: "CLOUD_DEVOPS",
+      name: "Kubernetes",
+      level: "PROFICIENT",
+      order: 1,
+    },
+    { group: "CLOUD_DEVOPS", name: "Helm", level: "PROFICIENT", order: 2 },
+    { group: "CLOUD_DEVOPS", name: "GCP", level: "PROFICIENT", order: 3 },
+    { group: "CLOUD_DEVOPS", name: "AWS", level: "PROFICIENT", order: 4 },
+    {
+      group: "CLOUD_DEVOPS",
+      name: "GitHub Actions",
+      level: "PROFICIENT",
+      order: 5,
+    },
+    { group: "CLOUD_DEVOPS", name: "Jenkins", level: "PROFICIENT", order: 6 },
+    {
+      group: "CLOUD_DEVOPS",
+      name: "BullMQ / ARQ",
+      level: "PROFICIENT",
+      order: 7,
+    },
+    { group: "CLOUD_DEVOPS", name: "Stripe", level: "PROFICIENT", order: 8 },
 
     // AI / ML
-    { group: 'AI', name: 'TensorFlow', level: 'FAMILIAR', order: 0 },
-    { group: 'AI', name: 'LangChain / LangGraph', level: 'FAMILIAR', order: 1 },
-    { group: 'AI', name: 'RAG', level: 'PROFICIENT', order: 2 },
-    { group: 'AI', name: 'Gemini', level: 'PROFICIENT', order: 3 },
-    { group: 'AI', name: 'LiveKit', level: 'PROFICIENT', order: 4 },
+    { group: "AI", name: "TensorFlow", level: "FAMILIAR", order: 0 },
+    { group: "AI", name: "LangChain / LangGraph", level: "FAMILIAR", order: 1 },
+    { group: "AI", name: "RAG", level: "PROFICIENT", order: 2 },
+    { group: "AI", name: "Gemini", level: "PROFICIENT", order: 3 },
+    { group: "AI", name: "LiveKit", level: "PROFICIENT", order: 4 },
   ];
 
   // Skills have no natural unique key in the schema besides id.
@@ -165,35 +196,58 @@ async function seedExperience(): Promise<void> {
   await prisma.experience.createMany({
     data: [
       {
-        role: 'Software Engineer',
-        company: 'Humancloud Technologies',
-        location: 'Pune, India',
-        startDate: '2024-07-01',
-        endDate: 'Present',
+        role: "Software Engineer",
+        company: "Humancloud Technologies",
+        location: "Pune, India",
+        startDate: new Date("2024-07-01"),
+        endDate: null,
         bullets: [
-          'Architected a 3-service production Monte Carlo platform for Siam Commercial Bank — TensorFlow GBM with Cholesky-correlated multi-asset paths, FastAPI + ARQ async engine over Oracle, SFTP ingestion pipeline with HMAC verification and FX conversion to THB.',
-          'Owned the ~185-endpoint Client backend on Teamcast (Express + Prisma) plus Candidate and Client Next.js portals — job postings, applications, shortlists, Stripe subscriptions, ATS integrations, and analytics.',
-          'Built Meet Scribe\'s bot-service (3 Playwright platform adapters, PulseAudio/FFmpeg audio capture to GCS, Gemini speaker diarization) and the 41-route Stripe Subscription/Payment domain (checkout, webhooks, credits, invoices) plus 10-page admin & checkout UI.',
-          'Shipped Lease Oasis Property/Admin/Inquiry/S3/Notification services + a Python RAG microservice (FastAPI + LangChain + LangGraph multi-agent flow over 768-dim Gemini embeddings in Elasticsearch) + 14-page admin & 8-page operator UIs.',
-          'Built Medic AI\'s 34-route Partner ecosystem + 4 role portals; frontend on Avaloq GBS (Angular 19, MiFID II suitability) with signal-based state, lazy-loaded routes, and reactive forms.',
+          "Architected a 3-service production Monte Carlo platform for Siam Commercial Bank — TensorFlow GBM with Cholesky-correlated multi-asset paths, FastAPI + ARQ async engine over Oracle, SFTP ingestion pipeline with HMAC verification and FX conversion to THB.",
+          "Owned the ~185-endpoint Client backend on Teamcast (Express + Prisma) plus Candidate and Client Next.js portals — job postings, applications, shortlists, Stripe subscriptions, ATS integrations, and analytics.",
+          "Built Meet Scribe's bot-service (3 Playwright platform adapters, PulseAudio/FFmpeg audio capture to GCS, Gemini speaker diarization) and the 41-route Stripe Subscription/Payment domain (checkout, webhooks, credits, invoices) plus 10-page admin & checkout UI.",
+          "Shipped Lease Oasis Property/Admin/Inquiry/S3/Notification services + a Python RAG microservice (FastAPI + LangChain + LangGraph multi-agent flow over 768-dim Gemini embeddings in Elasticsearch) + 14-page admin & 8-page operator UIs.",
+          "Built Medic AI's 34-route Partner ecosystem + 4 role portals; frontend on Avaloq GBS (Angular 19, MiFID II suitability) with signal-based state, lazy-loaded routes, and reactive forms.",
         ],
         order: 0,
       },
       {
-        role: 'Software Developer Intern',
-        company: 'Humancloud Technologies',
-        location: 'Pune, India',
-        startDate: '2024-01-01',
-        endDate: '2024-06-30',
+        role: "Software Developer Intern",
+        company: "Humancloud Technologies",
+        location: "Pune, India",
+        startDate: new Date("2024-01-01"),
+        endDate: new Date("2024-06-30"),
         bullets: [
-          'Built OMS — a Go + Angular 18 HR/attendance platform across 3 client organisations: 24 Go REST APIs, goroutine-based batch processing (5,000+ records/file), and a custom punch-pairing algorithm for biometric reconstruction.',
-          'Built authentication (JWT/bcrypt/Google OAuth), the Property module, and buyer/seller/agent portals on PropertyBull — a 4-microservice real-estate platform; integrated AWS S3 uploads and wired Docker + Jenkins CI/CD.',
+          "Built OMS — a Go + Angular 18 HR/attendance platform across 3 client organisations: 24 Go REST APIs, goroutine-based batch processing (5,000+ records/file), and a custom punch-pairing algorithm for biometric reconstruction.",
+          "Built authentication (JWT/bcrypt/Google OAuth), the Property module, and buyer/seller/agent portals on PropertyBull — a 4-microservice real-estate platform; integrated AWS S3 uploads and wired Docker + Jenkins CI/CD.",
         ],
         order: 1,
       },
     ],
   });
-  console.log('  ✓ Experience (2 roles)');
+  console.log("  ✓ Experience (2 roles)");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  EDUCATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function seedEducation(): Promise<void> {
+  // No unique slug — deleteMany + createMany for idempotency
+  await prisma.education.deleteMany({});
+
+  await prisma.education.createMany({
+    data: [
+      {
+        degree: "B.E. — Artificial Intelligence & Data Science",
+        school: "Zeal College of Engineering & Research, Pune",
+        startDate: new Date("2021-08-01"),
+        endDate: new Date("2024-06-30"),
+        detail: "CGPA 8.9 / 10",
+        order: 0,
+      },
+    ],
+  });
+  console.log("  ✓ Education (1 entry)");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,30 +262,27 @@ async function seedAchievements(): Promise<void> {
       {
         title: '"Going Beyond" Award',
         description:
-          'Awarded by Humancloud Technologies for delivering critical production features across multiple projects — including the bank-grade SCB Monte Carlo platform, Teamcast, Meet Scribe, and Lease Oasis.',
-        year: '2025',
-        type: 'AWARD',
+          "Awarded by Humancloud Technologies for delivering critical production features across multiple projects — including the bank-grade SCB Monte Carlo platform, Teamcast, Meet Scribe, and Lease Oasis.",
+        date: new Date("2025-03-01"),
         order: 0,
       },
       {
-        title: 'Mentored Simulix Interns',
+        title: "Mentored Simulix Interns",
         description:
-          'Mentored interns building Simulix — Humancloud\'s internal Monte Carlo demo platform — sharing domain knowledge on simulation architecture, TensorFlow GBM, and async job queues.',
-        year: '2025',
-        type: 'MENTORING',
+          "Mentored interns building Simulix — Humancloud's internal Monte Carlo demo platform — sharing domain knowledge on simulation architecture, TensorFlow GBM, and async job queues.",
+        date: new Date("2025-06-01"),
         order: 1,
       },
       {
-        title: 'B.E. in Artificial Intelligence & Data Science',
+        title: "B.E. in Artificial Intelligence & Data Science",
         description:
-          'Zeal College of Engineering & Research, Pune — CGPA 8.9/10 — 2021–2024.',
-        year: '2024',
-        type: 'EDUCATION',
+          "Zeal College of Engineering & Research, Pune — CGPA 8.9/10 — 2021–2024.",
+        date: new Date("2024-06-30"),
         order: 2,
       },
     ],
   });
-  console.log('  ✓ Achievements (3 items)');
+  console.log("  ✓ Achievements (3 items)");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -247,10 +298,8 @@ async function seedProjects(): Promise<void> {
     tags: string[];
     stack: string[];
     metric: string;
-    proofType: 'LIVE_DEMO' | 'LIVE_LOGIN' | 'ARCHITECTURE' | 'NONE';
     liveUrl?: string;
     screenshots: Prisma.InputJsonValue;
-    architectureImg?: string;
     overview: string;
     contribution: string;
     body: string;
@@ -260,22 +309,43 @@ async function seedProjects(): Promise<void> {
   }> = [
     // ── 1. SCB Monte Carlo ──────────────────────────────────────────────────
     {
-      slug: 'scb-monte-carlo',
-      title: 'SCB Monte Carlo Platform',
+      slug: "scb-monte-carlo",
+      title: "SCB Monte Carlo Platform",
       oneLiner:
-        'Bank-grade Monte Carlo portfolio-simulation platform for Siam Commercial Bank.',
-      role: 'Sole architect & engineer — entire platform.',
-      tags: ['Python', 'TensorFlow', 'FastAPI', 'ARQ', 'Oracle', 'Kubernetes', 'Helm'],
-      stack: ['Python', 'TensorFlow', 'FastAPI', 'ARQ', 'Redis', 'Oracle', 'Kubernetes', 'Helm', 'OpenShift'],
-      metric: '3 services · ~1,242 tests · Cholesky-GBM engine',
-      proofType: 'ARCHITECTURE',
-      liveUrl: undefined,
-      screenshots: [],
-      architectureImg: '/placeholder.png',
+        "Bank-grade Monte Carlo portfolio-simulation platform for Siam Commercial Bank.",
+      role: "Sole architect & engineer — entire platform.",
+      tags: [
+        "Python",
+        "TensorFlow",
+        "FastAPI",
+        "ARQ",
+        "Oracle",
+        "Kubernetes",
+        "Helm",
+      ],
+      stack: [
+        "Python",
+        "TensorFlow",
+        "FastAPI",
+        "ARQ",
+        "Redis",
+        "Oracle",
+        "Kubernetes",
+        "Helm",
+        "OpenShift",
+      ],
+      metric: "3 services · ~1,242 tests · Cholesky-GBM engine",
+      liveUrl: "https://simulix.humancloud.dev",
+      screenshots: [
+        {
+          url: "/screenshots/scb-monte-carlo.png",
+          alt: "Simulix — Monte Carlo simulation platform",
+        },
+      ],
       overview:
-        'A production Monte Carlo platform that ingests the bank\'s fund/price/FX data over SFTP, syncs it to Oracle, and runs TensorFlow GBM simulations with Cholesky-correlated multi-asset paths — returning 10/50/90-percentile outcome scenarios, achievement dates, and goal probability for goal-based investment advice.',
+        "A production Monte Carlo platform that ingests the bank's fund/price/FX data over SFTP, syncs it to Oracle, and runs TensorFlow GBM simulations with Cholesky-correlated multi-asset paths — returning 10/50/90-percentile outcome scenarios, achievement dates, and goal probability for goal-based investment advice.",
       contribution:
-        'Designed and built all three services plus infra independently: the FastAPI + ARQ/Redis async engine; the Cholesky-correlated GBM math implemented in TensorFlow; Oracle persistence; the SFTP→Oracle data pipeline (HMAC-verified, idempotent, FX-converted to THB); the Helm/OpenShift deployment; and a ~1,242-test suite with a load benchmark. Engaged directly with the bank\'s team on requirements and demos.',
+        "Designed and built all three services plus infra independently: the FastAPI + ARQ/Redis async engine; the Cholesky-correlated GBM math implemented in TensorFlow; Oracle persistence; the SFTP→Oracle data pipeline (HMAC-verified, idempotent, FX-converted to THB); the Helm/OpenShift deployment; and a ~1,242-test suite with a load benchmark. Engaged directly with the bank's team on requirements and demos.",
       body: `## Architecture
 
 The platform consists of three independent services:
@@ -304,9 +374,9 @@ SFTP → data-pull → staging → data-sync → Oracle
 
 ~1,242 tests across unit (GBM math assertions, FX conversion edge-cases), integration (pipeline end-to-end with mocked SFTP), and load tests (benchmarking N=10,000-path simulations at concurrency).
 
-## NDA Note
+## Live Demo & NDA Note
 
-This is an on-prem bank system (VPN-only); no public URL exists by design. Shown here via architecture diagram and role description only.`,
+The bank's production deployment is on-prem (VPN-only) under NDA. A **public demo of the same Monte Carlo engine — Simulix** — is available at [simulix.humancloud.dev](https://simulix.humancloud.dev), so you can try the simulation flow without the bank's internal data.`,
       featured: true,
       order: 0,
       published: true,
@@ -314,22 +384,45 @@ This is an on-prem bank system (VPN-only); no public URL exists by design. Shown
 
     // ── 2. Teamcast ─────────────────────────────────────────────────────────
     {
-      slug: 'teamcast',
-      title: 'Teamcast',
+      slug: "teamcast",
+      title: "Teamcast",
       oneLiner:
-        'AI-powered hiring & assessment SaaS (candidates, clients, partners, support).',
-      role:
-        'Owned the ~185-endpoint Client backend (Express + Prisma) + Candidate/Client portals.',
-      tags: ['Express', 'Prisma', 'PostgreSQL', 'Next.js', 'LiveKit', 'Convex', 'GCP Vertex AI', 'Stripe'],
-      stack: ['Node.js', 'Express', 'Prisma', 'PostgreSQL', 'Next.js', 'React', 'BullMQ', 'Convex', 'LiveKit', 'GCP Vertex AI', 'Stripe', 'GKE', 'Docker'],
-      metric: '148 Prisma models · ~185-endpoint backend',
-      proofType: 'LIVE_DEMO',
-      liveUrl: 'https://teamcast.io',
-      screenshots: [{ url: '/placeholder.png', alt: 'Teamcast dashboard' }],
+        "AI-powered hiring & assessment SaaS (candidates, clients, partners, support).",
+      role: "Owned the ~185-endpoint Client backend (Express + Prisma) + Candidate/Client portals.",
+      tags: [
+        "Express",
+        "Prisma",
+        "PostgreSQL",
+        "Next.js",
+        "LiveKit",
+        "Convex",
+        "GCP Vertex AI",
+        "Stripe",
+      ],
+      stack: [
+        "Node.js",
+        "Express",
+        "Prisma",
+        "PostgreSQL",
+        "Next.js",
+        "React",
+        "BullMQ",
+        "Convex",
+        "LiveKit",
+        "GCP Vertex AI",
+        "Stripe",
+        "GKE",
+        "Docker",
+      ],
+      metric: "148 Prisma models · ~185-endpoint backend",
+      liveUrl: "https://teamcast.ai",
+      screenshots: [
+        { url: "/screenshots/teamcast.png", alt: "Teamcast dashboard" },
+      ],
       overview:
-        'Full hiring-lifecycle platform — job posting → AI candidate matching → 3-stage AI assessment funnel → AI-proctored LiveKit interviews → hire. 148-model multi-tenant Postgres backend; Convex real-time layer for notifications and live interview state.',
+        "Full hiring-lifecycle platform — job posting → AI candidate matching → 3-stage AI assessment funnel → AI-proctored LiveKit interviews → hire. 148-model multi-tenant Postgres backend; Convex real-time layer for notifications and live interview state.",
       contribution:
-        'Built and owned the Client backend (~185 endpoints: job postings, applications, shortlists, candidate import, Stripe subscriptions, ATS integrations, analytics) and the Candidate/Client Next.js portals (role-based routing, form-heavy workflows, component reuse across the hiring funnel).',
+        "Built and owned the Client backend (~185 endpoints: job postings, applications, shortlists, candidate import, Stripe subscriptions, ATS integrations, analytics) and the Candidate/Client Next.js portals (role-based routing, form-heavy workflows, component reuse across the hiring funnel).",
       body: `## Overview
 
 Teamcast is a full hiring-lifecycle SaaS covering every step from job creation to offer — with AI at each stage.
@@ -369,22 +462,45 @@ Candidate Portal: application status, assessment submissions, interview scheduli
 
     // ── 3. Meet Scribe ──────────────────────────────────────────────────────
     {
-      slug: 'meet-scribe',
-      title: 'Meet Scribe',
+      slug: "meet-scribe",
+      title: "Meet Scribe",
       oneLiner:
-        'AI meeting-notetaker that joins calls, records, transcribes & syncs to CRM.',
-      role:
-        'Owned the bot-service + the 41-route Stripe billing domain + 10-page admin/checkout.',
-      tags: ['Playwright', 'BullMQ', 'Gemini', 'Google Speech', 'GCS', 'Stripe', 'Express', 'Prisma'],
-      stack: ['Node.js', 'Express', 'Prisma', 'PostgreSQL', 'Playwright', 'BullMQ', 'Gemini', 'Google Cloud Speech', 'GCS', 'Stripe', 'Convex', 'GKE', 'PM2'],
-      metric: '3 Playwright adapters · 41 billing routes',
-      proofType: 'LIVE_LOGIN',
-      liveUrl: 'https://meetscribe.io',
-      screenshots: [{ url: '/placeholder.png', alt: 'Meet Scribe dashboard' }],
+        "AI meeting-notetaker that joins calls, records, transcribes & syncs to CRM.",
+      role: "Owned the bot-service + the 41-route Stripe billing domain + 10-page admin/checkout.",
+      tags: [
+        "Playwright",
+        "BullMQ",
+        "Gemini",
+        "Google Speech",
+        "GCS",
+        "Stripe",
+        "Express",
+        "Prisma",
+      ],
+      stack: [
+        "Node.js",
+        "Express",
+        "Prisma",
+        "PostgreSQL",
+        "Playwright",
+        "BullMQ",
+        "Gemini",
+        "Google Cloud Speech",
+        "GCS",
+        "Stripe",
+        "Convex",
+        "GKE",
+        "PM2",
+      ],
+      metric: "3 Playwright adapters · 41 billing routes",
+      liveUrl: "https://meetscribe.co",
+      screenshots: [
+        { url: "/screenshots/meet-scribe.png", alt: "Meet Scribe dashboard" },
+      ],
       overview:
-        'A headless bot silently joins Microsoft Teams, Zoom, and Google Meet; captures audio to GCS; and produces Gemini-diarized transcripts → summaries, MOM emails, and CRM sync — on a Stripe credit/subscription model.',
+        "A headless bot silently joins Microsoft Teams, Zoom, and Google Meet; captures audio to GCS; and produces Gemini-diarized transcripts → summaries, MOM emails, and CRM sync — on a Stripe credit/subscription model.",
       contribution:
-        'Built the bot-service (3 Playwright platform adapters, PulseAudio/FFmpeg audio capture to GCS, Gemini-powered speaker diarization) and the 41-route Stripe Subscription/Payment domain (checkout, webhooks, credits, invoices) plus the 10-page admin & checkout UI.',
+        "Built the bot-service (3 Playwright platform adapters, PulseAudio/FFmpeg audio capture to GCS, Gemini-powered speaker diarization) and the 41-route Stripe Subscription/Payment domain (checkout, webhooks, credits, invoices) plus the 10-page admin & checkout UI.",
       body: `## Architecture
 
 \`\`\`
@@ -429,22 +545,46 @@ Google Cloud Speech returns segments with speaker tags. Gemini is called with th
 
     // ── 4. Lease Oasis ──────────────────────────────────────────────────────
     {
-      slug: 'lease-oasis',
-      title: 'Lease Oasis',
+      slug: "lease-oasis",
+      title: "Lease Oasis",
       oneLiner:
-        'UAE property-rental & lease-management platform (7-service microservices).',
-      role:
-        'Owned Property/Admin/Inquiry/S3/Notification services + a Python RAG microservice + admin/operator UIs.',
-      tags: ['Express', 'TypeORM', 'PostgreSQL', 'FastAPI', 'LangChain', 'LangGraph', 'Elasticsearch', 'Next.js'],
-      stack: ['Node.js', 'Express', 'TypeORM', 'PostgreSQL', 'FastAPI', 'Python', 'LangChain', 'LangGraph', 'Elasticsearch', 'Next.js', 'Stripe', 'Docker', 'GKE'],
-      metric: '7 services · 63 shared entities · 14-page admin + 8-page operator',
-      proofType: 'LIVE_DEMO',
-      liveUrl: 'https://leaseoasis.ae',
-      screenshots: [{ url: '/placeholder.png', alt: 'Lease Oasis listings' }],
+        "UAE property-rental & lease-management platform (7-service microservices).",
+      role: "Owned Property/Admin/Inquiry/S3/Notification services + a Python RAG microservice + admin/operator UIs.",
+      tags: [
+        "Express",
+        "TypeORM",
+        "PostgreSQL",
+        "FastAPI",
+        "LangChain",
+        "LangGraph",
+        "Elasticsearch",
+        "Next.js",
+      ],
+      stack: [
+        "Node.js",
+        "Express",
+        "TypeORM",
+        "PostgreSQL",
+        "FastAPI",
+        "Python",
+        "LangChain",
+        "LangGraph",
+        "Elasticsearch",
+        "Next.js",
+        "Stripe",
+        "Docker",
+        "GKE",
+      ],
+      metric:
+        "7 services · 63 shared entities · 14-page admin + 8-page operator",
+      liveUrl: "https://www.leaseoasis.ae",
+      screenshots: [
+        { url: "/screenshots/lease-oasis.png", alt: "Lease Oasis listings" },
+      ],
       overview:
-        'Multi-sided property platform for the UAE market — landlords, agencies, agents, and operators — with credit/subscription billing, Elasticsearch-powered search, and a conversational AI assistant backed by a multi-agent LangGraph flow.',
+        "Multi-sided property platform for the UAE market — landlords, agencies, agents, and operators — with credit/subscription billing, Elasticsearch-powered search, and a conversational AI assistant backed by a multi-agent LangGraph flow.",
       contribution:
-        'Built the Property/Admin/Inquiry/S3/Notification backend services and a Python RAG microservice (FastAPI + LangChain + LangGraph multi-agent flow over 768-dimensional Gemini embeddings in Elasticsearch), plus the 14-page Admin and 8-page Operator Next.js frontends.',
+        "Built the Property/Admin/Inquiry/S3/Notification backend services and a Python RAG microservice (FastAPI + LangChain + LangGraph multi-agent flow over 768-dimensional Gemini embeddings in Elasticsearch), plus the 14-page Admin and 8-page Operator Next.js frontends.",
       body: `## Architecture
 
 \`\`\`
@@ -485,21 +625,32 @@ LangGraph's checkpointing keeps conversation history for follow-up questions.
 
     // ── 5. Medic AI ─────────────────────────────────────────────────────────
     {
-      slug: 'medic-ai',
-      title: 'Medic AI',
+      slug: "medic-ai",
+      title: "Medic AI",
       oneLiner:
-        'Travel-insurance SaaS aggregator (insurers → agency partners → issuer agents).',
-      role: 'Owned the 34-route Partner ecosystem + built 4 role-specific portals.',
-      tags: ['Express', 'Prisma', 'PostgreSQL', 'Next.js', 'pdfmake', 'AWS S3'],
-      stack: ['Node.js', 'Express', 'Prisma', 'PostgreSQL', 'Next.js', 'pdfmake', 'AWS S3', 'QR verification', 'Docker'],
-      metric: '34-route partner ecosystem · 4 role portals · credit facility',
-      proofType: 'LIVE_DEMO',
-      liveUrl: 'https://medicai.io',
-      screenshots: [{ url: '/placeholder.png', alt: 'Medic AI portal' }],
+        "Travel-insurance SaaS aggregator (insurers → agency partners → issuer agents).",
+      role: "Owned the 34-route Partner ecosystem + built 4 role-specific portals.",
+      tags: ["Express", "Prisma", "PostgreSQL", "Next.js", "pdfmake", "AWS S3"],
+      stack: [
+        "Node.js",
+        "Express",
+        "Prisma",
+        "PostgreSQL",
+        "Next.js",
+        "pdfmake",
+        "AWS S3",
+        "QR verification",
+        "Docker",
+      ],
+      metric: "34-route partner ecosystem · 4 role portals · credit facility",
+      liveUrl: "https://www.tanim.ai",
+      screenshots: [
+        { url: "/screenshots/medic-ai.png", alt: "Medic AI portal" },
+      ],
       overview:
-        'B2B2C insurance distribution: insurers define products, partners onboard on a credit facility, issuer agents instantly issue policies (PDF certificate + QR verification) with settlement and reporting.',
+        "B2B2C insurance distribution: insurers define products, partners onboard on a credit facility, issuer agents instantly issue policies (PDF certificate + QR verification) with settlement and reporting.",
       contribution:
-        'Built the 34-route Partner ecosystem (onboarding, issuer agents, configuration, credit facility + payment-proof reconciliation, partner-run policy issuance) and the 4 role portals (admin / insurer / partner / partner-employee) with role-based middleware routing and multi-step forms.',
+        "Built the 34-route Partner ecosystem (onboarding, issuer agents, configuration, credit facility + payment-proof reconciliation, partner-run policy issuance) and the 4 role portals (admin / insurer / partner / partner-employee) with role-based middleware routing and multi-step forms.",
       body: `## Architecture
 
 \`\`\`
@@ -533,20 +684,29 @@ A single Express middleware layer reads the JWT \`role\` claim and attaches the 
 
     // ── 6. Avaloq GBS ───────────────────────────────────────────────────────
     {
-      slug: 'avaloq-gbs',
-      title: 'Avaloq GBS',
-      oneLiner: 'MiFID II-compliant goal-based investment-advisory platform.',
-      role: 'Frontend developer (Angular 19) on a regulated-finance product.',
-      tags: ['Angular 19', 'Signals', 'RxJS', 'Reactive Forms', 'TypeScript'],
-      stack: ['Angular 19', 'TypeScript', 'RxJS', 'Angular Signals', 'Spring Boot', 'Java 21', 'PostgreSQL'],
-      metric: '~69 lazy routes · ~1,845 signal usages · MiFID II suitability',
-      proofType: 'NONE',
-      liveUrl: undefined,
-      screenshots: [{ url: '/placeholder.png', alt: 'Avaloq GBS dashboard' }],
+      slug: "avaloq-gbs",
+      title: "Avaloq GBS",
+      oneLiner: "MiFID II-compliant goal-based investment-advisory platform.",
+      role: "Frontend developer (Angular 19) on a regulated-finance product.",
+      tags: ["Angular 19", "Signals", "RxJS", "Reactive Forms", "TypeScript"],
+      stack: [
+        "Angular 19",
+        "TypeScript",
+        "RxJS",
+        "Angular Signals",
+        "Spring Boot",
+        "Java 21",
+        "PostgreSQL",
+      ],
+      metric: "~69 lazy routes · ~1,845 signal usages · MiFID II suitability",
+      liveUrl: "https://demo-gbs.humancloud.ltd",
+      screenshots: [
+        { url: "/screenshots/avaloq-gbs.png", alt: "Avaloq GBS dashboard" },
+      ],
       overview:
-        'Wealth-advisory platform — clients set financial goals, complete MiFID II risk-profiling and suitability assessment, get matched to model portfolios, review advisor proposals, and execute orders.',
+        "Wealth-advisory platform — clients set financial goals, complete MiFID II risk-profiling and suitability assessment, get matched to model portfolios, review advisor proposals, and execute orders.",
       contribution:
-        'Built features on the Angular 19 app using signal-based state, lazy-loaded routes, reactive forms, and RxJS; participated in code reviews under strict quality gates for regulated financial software.',
+        "Built features on the Angular 19 app using signal-based state, lazy-loaded routes, reactive forms, and RxJS; participated in code reviews under strict quality gates for regulated financial software.",
       body: `## Product Context
 
 Avaloq GBS (Goal-Based Solutions) is a wealth-management platform for financial advisors and their clients. It must comply with MiFID II regulations — every suitability assessment, portfolio recommendation, and order must be auditable.
@@ -577,21 +737,31 @@ The project enforced strict ESLint rules, mandatory code reviews, component size
 
     // ── 7. OMS ──────────────────────────────────────────────────────────────
     {
-      slug: 'oms',
-      title: 'OMS',
+      slug: "oms",
+      title: "OMS",
       oneLiner:
-        'Golang + Angular HR / biometric-attendance platform (deployed to 3 client orgs).',
-      role: 'Full-stack engineer (intern) — backend + frontend.',
-      tags: ['Go', 'Gin', 'GORM', 'Angular 18', 'PostgreSQL', 'Docker'],
-      stack: ['Go', 'Gin', 'GORM', 'PostgreSQL', 'Angular 18', 'TypeScript', 'RxJS', 'Docker', 'Kubernetes', 'Harbor'],
-      metric: '24 Go REST APIs · 27 Angular components · goroutine batch',
-      proofType: 'NONE',
+        "Golang + Angular HR / biometric-attendance platform (deployed to 3 client orgs).",
+      role: "Full-stack engineer (intern) — backend + frontend.",
+      tags: ["Go", "Gin", "GORM", "Angular 18", "PostgreSQL", "Docker"],
+      stack: [
+        "Go",
+        "Gin",
+        "GORM",
+        "PostgreSQL",
+        "Angular 18",
+        "TypeScript",
+        "RxJS",
+        "Docker",
+        "Kubernetes",
+        "Harbor",
+      ],
+      metric: "24 Go REST APIs · 27 Angular components · goroutine batch",
       liveUrl: undefined,
-      screenshots: [{ url: '/placeholder.png', alt: 'OMS attendance dashboard' }],
+      screenshots: [],
       overview:
-        'Ingests raw biometric punch files and reconstructs attendance records via a custom punch-pairing algorithm; produces muster-roll + daily/monthly reports with Excel export. Deployed to 3 client organisations.',
+        "Ingests raw biometric punch files and reconstructs attendance records via a custom punch-pairing algorithm; produces muster-roll + daily/monthly reports with Excel export. Deployed to 3 client organisations.",
       contribution:
-        'Built the 24-endpoint Go backend (clean architecture with Gin + GORM), goroutine-based batch processing (5,000+ records/file), a custom punch-pairing algorithm, and 27 Angular 18 components (reactive forms, RxJS, role-based routing, typed services, HTTP interceptors).',
+        "Built the 24-endpoint Go backend (clean architecture with Gin + GORM), goroutine-based batch processing (5,000+ records/file), a custom punch-pairing algorithm, and 27 Angular 18 components (reactive forms, RxJS, role-based routing, typed services, HTTP interceptors).",
       body: `## Architecture
 
 \`\`\`
@@ -636,21 +806,39 @@ internal/
 
     // ── 8. PropertyBull ─────────────────────────────────────────────────────
     {
-      slug: 'propertybull',
-      title: 'PropertyBull',
+      slug: "propertybull",
+      title: "PropertyBull",
       oneLiner:
-        '4-microservice real-estate marketplace (Next.js + Express, polyglot).',
-      role: 'Built auth, the Property module & buyer/seller/agent portals (intern).',
-      tags: ['Next.js', 'Express', 'TypeORM', 'PostgreSQL', 'AWS S3', 'Jenkins'],
-      stack: ['Next.js', 'React', 'Node.js', 'Express', 'TypeORM', 'PostgreSQL', 'AWS S3', 'Docker', 'Jenkins', 'Python', 'Java'],
-      metric: '4 microservices · JWT + Google OAuth · S3 uploads',
-      proofType: 'LIVE_DEMO',
-      liveUrl: 'https://propertybull.in',
-      screenshots: [{ url: '/placeholder.png', alt: 'PropertyBull listing page' }],
+        "4-microservice real-estate marketplace (Next.js + Express, polyglot).",
+      role: "Built auth, the Property module & buyer/seller/agent portals (intern).",
+      tags: [
+        "Next.js",
+        "Express",
+        "TypeORM",
+        "PostgreSQL",
+        "AWS S3",
+        "Jenkins",
+      ],
+      stack: [
+        "Next.js",
+        "React",
+        "Node.js",
+        "Express",
+        "TypeORM",
+        "PostgreSQL",
+        "AWS S3",
+        "Docker",
+        "Jenkins",
+        "Python",
+        "Java",
+      ],
+      metric: "4 microservices · JWT + Google OAuth · S3 uploads",
+      liveUrl: "https://app.propertybulls.ai",
+      screenshots: [],
       overview:
-        'Real-estate platform connecting buyers, sellers, agents, and service providers — MLS data sync, AI property search, Stripe billing.',
+        "Real-estate platform connecting buyers, sellers, agents, and service providers — MLS data sync, AI property search, Stripe billing.",
       contribution:
-        'Built authentication (JWT, bcrypt, Google OAuth), the Property module, and the buyer/seller/agent portals; integrated AWS S3 uploads; helped wire Docker + Jenkins CI/CD.',
+        "Built authentication (JWT, bcrypt, Google OAuth), the Property module, and the buyer/seller/agent portals; integrated AWS S3 uploads; helped wire Docker + Jenkins CI/CD.",
       body: `## Architecture (Polyglot Microservices)
 
 \`\`\`
@@ -713,16 +901,23 @@ async function seedBlogPosts(): Promise<void> {
   }> = [
     // ── Post 1: SCB Monte Carlo ──────────────────────────────────────────────
     {
-      slug: 'bank-grade-monte-carlo-cholesky-gbm-tensorflow',
+      slug: "bank-grade-monte-carlo-cholesky-gbm-tensorflow",
       title:
-        'Building a bank-grade Monte Carlo engine: Cholesky-correlated GBM in TensorFlow',
+        "Building a bank-grade Monte Carlo engine: Cholesky-correlated GBM in TensorFlow",
       excerpt:
-        'How I designed and built a production Monte Carlo simulation platform for Siam Commercial Bank — covering Cholesky decomposition, correlated GBM paths, TensorFlow vectorisation, FastAPI + ARQ async architecture, and ~1,242 tests.',
-      coverImage: '/placeholder.png',
-      tags: ['Python', 'TensorFlow', 'Monte Carlo', 'FastAPI', 'Fintech', 'Architecture'],
+        "How I designed and built a production Monte Carlo simulation platform for Siam Commercial Bank — covering Cholesky decomposition, correlated GBM paths, TensorFlow vectorisation, FastAPI + ARQ async architecture, and ~1,242 tests.",
+      coverImage: "/placeholder.png",
+      tags: [
+        "Python",
+        "TensorFlow",
+        "Monte Carlo",
+        "FastAPI",
+        "Fintech",
+        "Architecture",
+      ],
       readingTime: 12,
       published: true,
-      publishedAt: new Date('2025-03-15'),
+      publishedAt: new Date("2025-03-15"),
       body: `## Why Monte Carlo?
 
 Goal-based investment advice needs to answer: *"Given this portfolio and my monthly contributions, what is the probability of reaching ₿ 5M in 15 years?"* Closed-form solutions (like the Black-Scholes formula) work for single assets in idealised conditions, but real portfolios hold multiple correlated assets, and real markets have fat tails that simple lognormal assumptions miss.
@@ -819,15 +1014,22 @@ The test suite breaks down as:
 
     // ── Post 2: Teamcast 148 models ──────────────────────────────────────────
     {
-      slug: 'designing-148-model-multi-tenant-hiring-platform',
-      title: 'Designing a 148-model multi-tenant hiring platform',
+      slug: "designing-148-model-multi-tenant-hiring-platform",
+      title: "Designing a 148-model multi-tenant hiring platform",
       excerpt:
-        'How Teamcast\'s data model handles multi-tenancy, a 3-stage AI assessment funnel, Express as system-of-record alongside Convex for real-time, and BullMQ for background work — at 148 Prisma models.',
-      coverImage: '/placeholder.png',
-      tags: ['PostgreSQL', 'Prisma', 'Multi-tenancy', 'Express', 'Architecture', 'Hiring'],
+        "How Teamcast's data model handles multi-tenancy, a 3-stage AI assessment funnel, Express as system-of-record alongside Convex for real-time, and BullMQ for background work — at 148 Prisma models.",
+      coverImage: "/placeholder.png",
+      tags: [
+        "PostgreSQL",
+        "Prisma",
+        "Multi-tenancy",
+        "Express",
+        "Architecture",
+        "Hiring",
+      ],
       readingTime: 10,
       published: true,
-      publishedAt: new Date('2025-04-10'),
+      publishedAt: new Date("2025-04-10"),
       body: `## The Problem Space
 
 Teamcast is a full hiring-lifecycle SaaS: a company (client) posts jobs, candidates apply, go through a multi-stage AI assessment funnel, do a LiveKit video interview, and get hired — all in one platform. Multiple companies use the same platform simultaneously (multi-tenancy). The data model has to support all of this without cross-tenant leakage, while keeping query performance acceptable at scale.
@@ -894,15 +1096,23 @@ Heavy operations run in BullMQ queues on a separate PM2 process:
 
     // ── Post 3: Meet Scribe Playwright bots ──────────────────────────────────
     {
-      slug: 'three-playwright-bots-join-your-meetings',
-      title: '3 Playwright bots that silently join your meetings (Teams / Zoom / Meet)',
+      slug: "three-playwright-bots-join-your-meetings",
+      title:
+        "3 Playwright bots that silently join your meetings (Teams / Zoom / Meet)",
       excerpt:
-        'The engineering behind Meet Scribe\'s headless meeting bots — per-platform Playwright automation, PulseAudio/FFmpeg audio capture to GCS, and Gemini speaker diarization — and all the quirks that made it hard.',
-      coverImage: '/placeholder.png',
-      tags: ['Playwright', 'Node.js', 'Gemini', 'GCS', 'Automation', 'Architecture'],
+        "The engineering behind Meet Scribe's headless meeting bots — per-platform Playwright automation, PulseAudio/FFmpeg audio capture to GCS, and Gemini speaker diarization — and all the quirks that made it hard.",
+      coverImage: "/placeholder.png",
+      tags: [
+        "Playwright",
+        "Node.js",
+        "Gemini",
+        "GCS",
+        "Automation",
+        "Architecture",
+      ],
       readingTime: 11,
       published: true,
-      publishedAt: new Date('2025-05-01'),
+      publishedAt: new Date("2025-05-01"),
       body: `## The Idea
 
 Meet Scribe is an AI notetaker. You invite a bot to your meeting; it joins silently, captures everything, and produces a diarized transcript, summary, and MOM draft. The engineering challenge: reliably automate three different meeting platforms (Microsoft Teams, Zoom, Google Meet) — each with different DOM structures, authentication flows, and audio APIs — without any official SDK access.
@@ -1028,6 +1238,99 @@ Gemini is remarkably good at this — it uses speech patterns, first mentions ("
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  MEDIA  (local /public/screenshots assets — testing only; replaced by
+//  Cloudinary uploads later. cloudinaryUrl holds a local /screenshots path.)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function seedMedia(): Promise<void> {
+  await prisma.media.deleteMany({});
+
+  // Files currently in portfolio-frontend/public/screenshots/
+  const files = [
+    'teamcast1',
+    'teamcast2',
+    'teamcast3',
+    'teamcast4',
+    'teamcast5',
+    'teamcast6',
+  ];
+
+  await prisma.media.createMany({
+    data: files.map((name, i) => ({
+      cloudinaryUrl: `/screenshots/${name}.png`,
+      publicId: `local/${name}`,
+      alt: `Teamcast screenshot ${i + 1}`,
+      type: 'image/png',
+      category: 'Projects',
+    })),
+  });
+  console.log(`  ✓ Media (${files.length} local screenshots)`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONFIGURATION  — admin-editable dropdown option sets
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function seedConfig(): Promise<void> {
+  const sets: { key: string; label: string; items: { value: string; label: string }[] }[] = [
+    {
+      key: 'contact_link_types',
+      label: 'Contact link types',
+      items: [
+        { value: 'email', label: 'Email' },
+        { value: 'phone', label: 'Phone' },
+        { value: 'website', label: 'Website' },
+        { value: 'linkedin', label: 'LinkedIn' },
+        { value: 'github', label: 'GitHub' },
+        { value: 'twitter', label: 'X (Twitter)' },
+        { value: 'instagram', label: 'Instagram' },
+        { value: 'youtube', label: 'YouTube' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'dribbble', label: 'Dribbble' },
+        { value: 'telegram', label: 'Telegram' },
+        { value: 'resume', label: 'Resume / CV' },
+      ],
+    },
+    {
+      key: 'social_link_types',
+      label: 'Social link types',
+      items: [
+        { value: 'website', label: 'Website' },
+        { value: 'linkedin', label: 'LinkedIn' },
+        { value: 'github', label: 'GitHub' },
+        { value: 'twitter', label: 'X (Twitter)' },
+        { value: 'instagram', label: 'Instagram' },
+        { value: 'youtube', label: 'YouTube' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'dribbble', label: 'Dribbble' },
+        { value: 'telegram', label: 'Telegram' },
+        { value: 'email', label: 'Email' },
+      ],
+    },
+    {
+      key: 'media_categories',
+      label: 'Media categories',
+      items: [
+        { value: 'Projects', label: 'Projects' },
+        { value: 'Blog', label: 'Blog' },
+        { value: 'Awards', label: 'Awards' },
+        { value: 'Profile', label: 'Profile' },
+        { value: 'Misc', label: 'Misc' },
+      ],
+    },
+  ];
+
+  for (const s of sets) {
+    await prisma.configuration.upsert({
+      where: { key: s.key },
+      update: { label: s.label, items: s.items },
+      create: { key: s.key, label: s.label, items: s.items },
+    });
+  }
+  console.log(`  ✓ Configuration (${sets.length} option sets)`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  PAGES + SECTIONS  (system pages + Home page sections)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1037,7 +1340,7 @@ async function seedPages(): Promise<void> {
   const systemPages: Array<{
     slug: string;
     title: string;
-    type: 'HOME' | 'PROJECTS' | 'BLOG' | 'ABOUT' | 'CONTACT';
+    type: "HOME" | "PROJECTS" | "BLOG" | "ABOUT" | "CONTACT";
     metaTitle: string;
     metaDescription: string;
     navLabel: string;
@@ -1047,51 +1350,52 @@ async function seedPages(): Promise<void> {
     published: boolean;
   }> = [
     {
-      slug: 'home',
-      title: 'Home',
-      type: 'HOME',
-      metaTitle: 'Rohit Malviya — Full-Stack Engineer',
+      slug: "home",
+      title: "Home",
+      type: "HOME",
+      metaTitle: "Rohit Malviya — Full-Stack Engineer",
       metaDescription:
-        'Full-stack engineer (2+ yrs) building production SaaS & bank-grade systems across TypeScript, Go, Python & Java. Architected a Monte Carlo platform for Siam Commercial Bank.',
-      navLabel: 'Home',
+        "Full-stack engineer (2+ yrs) building production SaaS & bank-grade systems across TypeScript, Go, Python & Java. Architected a Monte Carlo platform for Siam Commercial Bank.",
+      navLabel: "Home",
       navOrder: 0,
-      showInNav: false, // home is accessed via "/" — no nav item needed
+      showInNav: true,
       isSystem: true,
       published: true,
     },
     {
-      slug: 'projects',
-      title: 'Projects',
-      type: 'PROJECTS',
-      metaTitle: 'Projects — Rohit Malviya',
+      slug: "projects",
+      title: "Projects",
+      type: "PROJECTS",
+      metaTitle: "Projects — Rohit Malviya",
       metaDescription:
-        'Production systems I\'ve built — fintech, SaaS, real-estate, insurance, meeting-AI — across TypeScript, Go, Python & Java.',
-      navLabel: 'Projects',
+        "Production systems I've built — fintech, SaaS, real-estate, insurance, meeting-AI — across TypeScript, Go, Python & Java.",
+      navLabel: "Work",
       navOrder: 1,
       showInNav: true,
       isSystem: true,
       published: true,
     },
     {
-      slug: 'blog',
-      title: 'Blog',
-      type: 'BLOG',
-      metaTitle: 'Blog — Rohit Malviya',
+      slug: "blog",
+      title: "Blog",
+      type: "BLOG",
+      metaTitle: "Blog — Rohit Malviya",
       metaDescription:
-        'Engineering deep-dives — Monte Carlo simulations, multi-tenant data modelling, Playwright automation, and more.',
-      navLabel: 'Blog',
+        "Engineering deep-dives — Monte Carlo simulations, multi-tenant data modelling, Playwright automation, and more.",
+      navLabel: "Blog",
       navOrder: 2,
       showInNav: true,
       isSystem: true,
       published: true,
     },
     {
-      slug: 'contact',
-      title: 'Contact',
-      type: 'CONTACT',
-      metaTitle: 'Contact — Rohit Malviya',
-      metaDescription: 'Get in touch with Rohit Malviya — full-stack engineer based in Pune, India.',
-      navLabel: 'Contact',
+      slug: "contact",
+      title: "Contact",
+      type: "CONTACT",
+      metaTitle: "Contact — Rohit Malviya",
+      metaDescription:
+        "Get in touch with Rohit Malviya — full-stack engineer based in Pune, India.",
+      navLabel: "Contact",
       navOrder: 3,
       showInNav: true,
       isSystem: true,
@@ -1102,7 +1406,13 @@ async function seedPages(): Promise<void> {
   for (const pageData of systemPages) {
     await prisma.page.upsert({
       where: { slug: pageData.slug },
-      update: {},
+      // update applies nav defaults on every re-seed so existing rows stay in sync
+      update: {
+        navLabel: pageData.navLabel,
+        navOrder: pageData.navOrder,
+        showInNav: pageData.showInNav,
+        published: pageData.published,
+      },
       create: pageData,
     });
   }
@@ -1111,7 +1421,7 @@ async function seedPages(): Promise<void> {
   // ── Home page sections ────────────────────────────────────────────────────
 
   const homePage = await prisma.page.findUniqueOrThrow({
-    where: { slug: 'home' },
+    where: { slug: "home" },
   });
 
   // Section data shapes per step4 §3.2
@@ -1129,40 +1439,52 @@ async function seedPages(): Promise<void> {
     }> = [
       // ── HERO ──────────────────────────────────────────────────────────────
       {
-        type: 'HERO',
+        type: "HERO",
         order: 0,
         enabled: true,
         data: {
-          eyebrow: '// FULL-STACK ENGINEER · PUNE, INDIA',
-          name: 'Rohit Malviya.',
-          gradientLine: 'I build production systems.',
+          eyebrow: "// FULL-STACK ENGINEER · PUNE, INDIA",
+          name: "Rohit Malviya.",
+          gradientLine: "I build production systems.",
           subhead:
-            'From a bank-grade Monte Carlo engine to multi-tenant SaaS platforms — I ship across TypeScript, Go, Python & Java. 2+ years turning hard problems into shipped products at Humancloud Technologies.',
+            "From a bank-grade Monte Carlo engine to multi-tenant SaaS platforms — I ship across TypeScript, Go, Python & Java. 2+ years turning hard problems into shipped products at Humancloud Technologies.",
           buttons: [
-            { label: 'View Résumé', href: '/resume.pdf', style: 'primary' },
-            { label: 'GitHub', href: 'https://github.com/rohithumancloud', style: 'ghost' },
-            { label: 'LinkedIn', href: 'https://linkedin.com/in/rohitbmalviya', style: 'ghost' },
-            { label: 'Email', href: 'mailto:rohitbmalviya@gmail.com', style: 'ghost' },
+            { label: "View Résumé", href: "/resume.pdf", style: "primary" },
+            {
+              label: "GitHub",
+              href: "https://github.com/rohithumancloud",
+              style: "ghost",
+            },
+            {
+              label: "LinkedIn",
+              href: "https://linkedin.com/in/rohitbmalviya",
+              style: "ghost",
+            },
+            {
+              label: "Email",
+              href: "mailto:rohitbmalviya@gmail.com",
+              style: "ghost",
+            },
           ],
           metrics: [
-            { value: '8', label: 'production platforms' },
-            { value: '5', label: 'languages shipped' },
-            { value: 'Bank-grade', label: 'fintech' },
-            { value: '2+', label: 'years' },
+            { value: "8", label: "production platforms" },
+            { value: "5", label: "languages shipped" },
+            { value: "Bank-grade", label: "fintech" },
+            { value: "2+", label: "years" },
           ],
         } satisfies Prisma.InputJsonValue,
       },
 
       // ── ABOUT ─────────────────────────────────────────────────────────────
       {
-        type: 'ABOUT',
+        type: "ABOUT",
         order: 1,
         enabled: true,
         data: {
-          heading: '01 — about',
+          heading: "01 — about",
           paragraphs: [
             "I'm a full-stack engineer at Humancloud Technologies (Pune). In 2+ years I've shipped production software across hiring, fintech, real-estate, insurance, and meeting-AI — comfortable owning a feature from the database to the pixel.",
-            'I work across the stack and across languages: Angular & Next.js on the front; Express, FastAPI, Spring Boot & Go on the back; PostgreSQL & Oracle for data; Docker, Kubernetes & Helm to ship it. My favourite work sits where the problem is genuinely hard — like architecting a bank-grade Monte Carlo simulation platform for Siam Commercial Bank (TensorFlow GBM with Cholesky-correlated paths, over Oracle, end to end).',
+            "I work across the stack and across languages: Angular & Next.js on the front; Express, FastAPI, Spring Boot & Go on the back; PostgreSQL & Oracle for data; Docker, Kubernetes & Helm to ship it. My favourite work sits where the problem is genuinely hard — like architecting a bank-grade Monte Carlo simulation platform for Siam Commercial Bank (TensorFlow GBM with Cholesky-correlated paths, over Oracle, end to end).",
             'I care about correctness, clean architecture, and actually shipping. I hold a B.E. in AI & Data Science (CGPA 8.9) and earned Humancloud\'s "Going Beyond" award for delivering critical production features.',
           ],
         } satisfies Prisma.InputJsonValue,
@@ -1170,85 +1492,73 @@ async function seedPages(): Promise<void> {
 
       // ── SKILLS ────────────────────────────────────────────────────────────
       {
-        type: 'SKILLS',
+        type: "SKILLS",
         order: 2,
         enabled: true,
         data: {
-          heading: '02 — skills',
-          source: 'skills-table',
+          heading: "02 — skills",
+          source: "skills-table",
         } satisfies Prisma.InputJsonValue,
       },
 
       // ── EXPERIENCE ────────────────────────────────────────────────────────
       {
-        type: 'EXPERIENCE',
+        type: "EXPERIENCE",
         order: 3,
         enabled: true,
         data: {
-          heading: '03 — experience',
-          source: 'experience-table',
+          heading: "03 — experience",
+          source: "experience-table",
         } satisfies Prisma.InputJsonValue,
       },
 
       // ── FEATURED_PROJECTS ─────────────────────────────────────────────────
       {
-        type: 'FEATURED_PROJECTS',
+        type: "FEATURED_PROJECTS",
         order: 4,
         enabled: true,
         data: {
-          heading: '04 — featured work',
-          auto: 'featured',
+          heading: "04 — featured work",
+          auto: "featured",
           limit: 4,
-        } satisfies Prisma.InputJsonValue,
-      },
-
-      // ── PROJECTS_GRID ─────────────────────────────────────────────────────
-      {
-        type: 'PROJECTS_GRID',
-        order: 5,
-        enabled: true,
-        data: {
-          heading: '05 — all projects',
-          filter: 'all',
-          limit: 8,
         } satisfies Prisma.InputJsonValue,
       },
 
       // ── BLOG_TEASER ───────────────────────────────────────────────────────
       {
-        type: 'BLOG_TEASER',
+        type: "BLOG_TEASER",
         order: 6,
         enabled: true,
         data: {
-          heading: '06 — from the blog',
+          heading: "06 — from the blog",
           limit: 3,
         } satisfies Prisma.InputJsonValue,
       },
 
       // ── ACHIEVEMENTS ──────────────────────────────────────────────────────
       {
-        type: 'ACHIEVEMENTS',
+        type: "ACHIEVEMENTS",
         order: 7,
         enabled: true,
         data: {
-          heading: '07 — recognition',
-          source: 'achievements-table',
+          heading: "07 — recognition",
+          source: "achievements-table",
         } satisfies Prisma.InputJsonValue,
       },
 
       // ── EDUCATION ─────────────────────────────────────────────────────────
       {
-        type: 'EDUCATION',
+        type: "EDUCATION",
         order: 8,
         enabled: true,
         data: {
-          heading: '08 — education',
+          heading: "08 — education",
           items: [
             {
-              degree: 'B.E. in Artificial Intelligence & Data Science',
-              school: 'Zeal College of Engineering & Research, Pune',
-              period: '2021 – 2024',
-              detail: 'CGPA 8.9 / 10',
+              degree: "B.E. in Artificial Intelligence & Data Science",
+              school: "Zeal College of Engineering & Research, Pune",
+              period: "2021 – 2024",
+              detail: "CGPA 8.9 / 10",
             },
           ],
         } satisfies Prisma.InputJsonValue,
@@ -1256,20 +1566,20 @@ async function seedPages(): Promise<void> {
 
       // ── CONTACT ───────────────────────────────────────────────────────────
       {
-        type: 'CONTACT',
+        type: "CONTACT",
         order: 9,
         enabled: true,
         data: {
           heading: "Let's build something.",
           blurb:
-            'Open to senior full-stack / backend / fintech roles. The fastest way to reach me is email — I reply quickly.',
+            "Open to senior full-stack / backend / fintech roles. The fastest way to reach me is email — I reply quickly.",
           showForm: false,
-          email: 'rohitbmalviya@gmail.com',
+          email: "rohitbmalviya@gmail.com",
           socials: {
-            github: 'https://github.com/rohithumancloud',
-            linkedin: 'https://linkedin.com/in/rohitbmalviya',
+            github: "https://github.com/rohithumancloud",
+            linkedin: "https://linkedin.com/in/rohitbmalviya",
           },
-          resumeUrl: '/resume.pdf',
+          resumeUrl: "/resume.pdf",
         } satisfies Prisma.InputJsonValue,
       },
     ];
@@ -1296,23 +1606,26 @@ async function seedPages(): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  console.log('\nSeeding database...\n');
+  console.log("\nSeeding database...\n");
 
   await seedSiteSettings();
   await seedAdminUser();
   await seedSkills();
   await seedExperience();
+  await seedEducation();
   await seedAchievements();
   await seedProjects();
   await seedBlogPosts();
+  await seedMedia();
+  await seedConfig();
   await seedPages();
 
-  console.log('\nSeed complete.\n');
+  console.log("\nSeed complete.\n");
 }
 
 main()
   .catch((error: unknown) => {
-    console.error('\nSeed failed:\n', error);
+    console.error("\nSeed failed:\n", error);
     process.exit(1);
   })
   .finally(() => {

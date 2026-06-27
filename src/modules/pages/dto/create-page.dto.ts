@@ -18,9 +18,10 @@ export class CreatePageDto {
   @IsString()
   title: string;
 
-  @ApiProperty({ enum: PageType })
+  @ApiPropertyOptional({ enum: PageType, default: PageType.CUSTOM })
   @IsEnum(PageType)
-  type: PageType;
+  @IsOptional()
+  type?: PageType;
 
   @ApiPropertyOptional()
   @IsString()

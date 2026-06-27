@@ -10,4 +10,21 @@ export class CreateMediaDto {
   @IsString()
   @IsOptional()
   alt?: string;
+
+  @ApiPropertyOptional({ description: 'Library category, e.g. "Projects"' })
+  @IsString()
+  @IsOptional()
+  category?: string;
+}
+
+export class UpdateMediaDto {
+  @ApiPropertyOptional({ description: 'Alt text for accessibility' })
+  @IsString()
+  @IsOptional()
+  alt?: string;
+
+  @ApiPropertyOptional({ description: 'Library category' })
+  @IsString()
+  @IsOptional()
+  category?: string;
 }

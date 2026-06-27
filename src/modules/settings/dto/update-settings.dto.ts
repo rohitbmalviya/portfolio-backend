@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsArray,
   IsEnum,
-  IsObject,
   IsOptional,
   IsString,
   IsUrl,
@@ -30,12 +30,12 @@ export class UpdateSettingsDto {
   location?: string;
 
   @ApiPropertyOptional({
-    description: 'JSON: { github: string, linkedin: string, twitter?: string }',
-    type: 'object',
+    description: 'JSON array of { type: string, value: string } social links',
+    type: 'array',
   })
-  @IsObject()
+  @IsArray()
   @IsOptional()
-  socials?: Record<string, string>;
+  socials?: { type: string; value: string }[];
 
   @ApiPropertyOptional()
   @IsUrl()

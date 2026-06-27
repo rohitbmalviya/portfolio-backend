@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
+  IsDateString,
   IsInt,
   IsOptional,
   IsString,
@@ -20,13 +21,23 @@ export class CreateExperienceDto {
   @IsString()
   location: string;
 
-  @ApiProperty({ description: 'ISO date string YYYY-MM-DD', example: '2022-01-01' })
-  @IsString()
+  @ApiProperty({ description: 'ISO date string', example: '2022-01-01' })
+  @IsDateString()
   startDate: string;
 
-  @ApiProperty({ description: 'ISO date string or "Present"', example: 'Present' })
+  @ApiPropertyOptional({
+    description: 'ISO date string, or null/omitted for "Present" (current role)',
+    example: '2024-06-30',
+    nullable: true,
+  })
+  @IsDateString()
+  @IsOptional()
+  endDate?: string | null;
+
+  @ApiPropertyOptional({ description: 'Company logo URL (Cloudinary)' })
   @IsString()
-  endDate: string;
+  @IsOptional()
+  logo?: string | null;
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()

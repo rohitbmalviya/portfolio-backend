@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
@@ -18,7 +19,7 @@ export class AchievementsService {
 
   findAll() {
     return this.prisma.achievement.findMany({
-      orderBy: [{ type: 'asc' }, { order: 'asc' }],
+      orderBy: { order: 'asc' },
     });
   }
 
@@ -27,12 +28,18 @@ export class AchievementsService {
   }
 
   async create(dto: CreateAchievementDto) {
-    return this.prisma.achievement.create({ data: dto });
+    return this.prisma.achievement.create({
+      data: { ...dto, date: dto.date ? new Date(dto.date) : null },
+    });
   }
 
   async update(id: string, dto: UpdateAchievementDto) {
     await this.findOrThrow(id);
-    return this.prisma.achievement.update({ where: { id }, data: dto });
+    const data: Prisma.AchievementUpdateInput = { ...dto };
+    if (dto.date !== undefined) {
+      data.date = dto.date ? new Date(dto.date) : null;
+    }
+    return this.prisma.achievement.update({ where: { id }, data });
   }
 
   async reorder(dto: ReorderAchievementsDto) {

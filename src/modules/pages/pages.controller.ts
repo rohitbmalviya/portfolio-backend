@@ -48,6 +48,17 @@ export class PagesController {
     return { data: await this.pagesService.findByIdWithSections(id) };
   }
 
+  // ── GET /api/pages/nav — public navigation items ────────────────────────
+  // IMPORTANT: must be declared before @Get(':slug') so Express does not
+  // treat the literal string "nav" as a slug parameter.
+  @Get('nav')
+  @ApiOperation({
+    summary: 'Public nav items — pages with showInNav=true and published=true, ordered by navOrder',
+  })
+  async findNav() {
+    return { data: await this.pagesService.findNav() };
+  }
+
   // ── GET /api/pages/:slug — public (enabled sections) or admin (all sections) ─
   @Get(':slug')
   @ApiOperation({ summary: 'Get a page by slug with its sections. Pass ?admin=true for all sections.' })
@@ -82,7 +93,7 @@ export class PagesController {
   @Delete(':id')
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: '[Admin] Delete a page by ID (system pages are protected)' })
+  @ApiOperation({ summary: '[Admin] Delete a page by ID (page must have zero sections)' })
   async remove(@Param('id') id: string) {
     await this.pagesService.remove(id);
   }

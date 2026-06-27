@@ -28,6 +28,13 @@ export class SkillsController {
     return { data: await this.skillsService.findAll() };
   }
 
+  // Declared BEFORE :id so "grouped" isn't treated as an id.
+  @Get('grouped')
+  @ApiOperation({ summary: 'Skills grouped by category (group + label + skills)' })
+  async findAllGrouped() {
+    return { data: await this.skillsService.findAllGrouped() };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a skill by ID' })
   async findOne(@Param('id') id: string) {

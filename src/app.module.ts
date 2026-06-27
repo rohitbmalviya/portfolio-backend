@@ -12,10 +12,13 @@ import { ProjectsModule } from './modules/projects/projects.module';
 import { BlogModule } from './modules/blog/blog.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { ExperienceModule } from './modules/experience/experience.module';
+import { EducationModule } from './modules/education/education.module';
 import { AchievementsModule } from './modules/achievements/achievements.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { MediaModule } from './modules/media/media.module';
 import { HealthModule } from './modules/health/health.module';
+import { StatsModule } from './modules/stats/stats.module';
+import { ConfigFeatureModule } from './modules/config/config.module';
 
 @Module({
   imports: [
@@ -37,10 +40,13 @@ import { HealthModule } from './modules/health/health.module';
     BlogModule,
     SkillsModule,
     ExperienceModule,
+    EducationModule,
     AchievementsModule,
     SettingsModule,
     MediaModule,
     HealthModule,
+    StatsModule,
+    ConfigFeatureModule,
   ],
   providers: [
     // Apply ThrottlerGuard globally to all routes

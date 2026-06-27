@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { AchievementType } from '@prisma/client';
+import { IsDateString, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateAchievementDto {
   @ApiProperty()
@@ -11,14 +10,19 @@ export class CreateAchievementDto {
   @IsString()
   description: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'ISO date string, or null/omitted if unspecified',
+    example: '2025-03-01',
+    nullable: true,
+  })
+  @IsDateString()
+  @IsOptional()
+  date?: string | null;
+
+  @ApiPropertyOptional({ description: 'Optional photo URL (Cloudinary)' })
   @IsString()
   @IsOptional()
-  year?: string;
-
-  @ApiProperty({ enum: AchievementType })
-  @IsEnum(AchievementType)
-  type: AchievementType;
+  image?: string | null;
 
   @ApiPropertyOptional({ default: 0 })
   @IsInt()

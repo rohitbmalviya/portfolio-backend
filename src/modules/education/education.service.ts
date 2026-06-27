@@ -1,49 +1,44 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateExperienceDto } from './dto/create-experience.dto';
-import { UpdateExperienceDto } from './dto/update-experience.dto';
-import { ReorderExperienceDto } from './dto/reorder-experience.dto';
+import { CreateEducationDto } from './dto/create-education.dto';
+import { UpdateEducationDto } from './dto/update-education.dto';
+import { ReorderEducationDto } from './dto/reorder-education.dto';
 
 @Injectable()
-export class ExperienceService {
+export class EducationService {
   constructor(private readonly prisma: PrismaService) {}
 
   private async findOrThrow(id: string) {
-    const exp = await this.prisma.experience.findUnique({ where: { id } });
-    if (!exp) {
-      throw new NotFoundException(`Experience "${id}" not found.`);
+    const edu = await this.prisma.education.findUnique({ where: { id } });
+    if (!edu) {
+      throw new NotFoundException(`Education "${id}" not found.`);
     }
-    return exp;
+    return edu;
   }
 
   findAll() {
-    return this.prisma.experience.findMany({ orderBy: { order: 'asc' } });
+    return this.prisma.education.findMany({ orderBy: { order: 'asc' } });
   }
 
   findOne(id: string) {
     return this.findOrThrow(id);
   }
 
-  async create(dto: CreateExperienceDto) {
+  async create(dto: CreateEducationDto) {
     const startDate = new Date(dto.startDate);
     const endDate = dto.endDate ? new Date(dto.endDate) : null;
     if (endDate && endDate < startDate) {
       throw new BadRequestException('End date cannot be before the start date.');
     }
-    return this.prisma.experience.create({
-      data: {
-        ...dto,
-        startDate,
-        endDate,
-        bullets: dto.bullets ?? [],
-      },
+    return this.prisma.education.create({
+      data: { ...dto, startDate, endDate },
     });
   }
 
-  async update(id: string, dto: UpdateExperienceDto) {
+  async update(id: string, dto: UpdateEducationDto) {
     const existing = await this.findOrThrow(id);
-    const data: Prisma.ExperienceUpdateInput = { ...dto };
+    const data: Prisma.EducationUpdateInput = { ...dto };
     if (dto.startDate !== undefined) data.startDate = new Date(dto.startDate);
     if (dto.endDate !== undefined) {
       data.endDate = dto.endDate ? new Date(dto.endDate) : null;
@@ -53,12 +48,12 @@ export class ExperienceService {
     if (end && start && new Date(end) < new Date(start)) {
       throw new BadRequestException('End date cannot be before the start date.');
     }
-    return this.prisma.experience.update({ where: { id }, data });
+    return this.prisma.education.update({ where: { id }, data });
   }
 
-  async reorder(dto: ReorderExperienceDto) {
-    const updates = dto.experience.map((item) =>
-      this.prisma.experience.update({
+  async reorder(dto: ReorderEducationDto) {
+    const updates = dto.education.map((item) =>
+      this.prisma.education.update({
         where: { id: item.id },
         data: { order: item.order },
       }),
@@ -68,6 +63,6 @@ export class ExperienceService {
 
   async remove(id: string) {
     await this.findOrThrow(id);
-    return this.prisma.experience.delete({ where: { id } });
+    return this.prisma.education.delete({ where: { id } });
   }
 }

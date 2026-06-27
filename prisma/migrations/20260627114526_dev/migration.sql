@@ -5,16 +5,10 @@ CREATE TYPE "PageType" AS ENUM ('HOME', 'PROJECTS', 'PROJECT_DETAIL', 'BLOG', 'B
 CREATE TYPE "SectionType" AS ENUM ('HERO', 'ABOUT', 'SKILLS', 'EXPERIENCE', 'FEATURED_PROJECTS', 'PROJECTS_GRID', 'BLOG_TEASER', 'ACHIEVEMENTS', 'EDUCATION', 'CONTACT', 'METRICS', 'RICH_TEXT', 'CTA', 'GALLERY');
 
 -- CreateEnum
-CREATE TYPE "ProofType" AS ENUM ('LIVE_DEMO', 'LIVE_LOGIN', 'ARCHITECTURE', 'NONE');
-
--- CreateEnum
 CREATE TYPE "SkillGroup" AS ENUM ('LANGUAGES', 'FRONTEND', 'BACKEND', 'DATA', 'CLOUD_DEVOPS', 'AI');
 
 -- CreateEnum
 CREATE TYPE "SkillLevel" AS ENUM ('EXPERT', 'PROFICIENT', 'FAMILIAR');
-
--- CreateEnum
-CREATE TYPE "AchievementType" AS ENUM ('AWARD', 'EDUCATION', 'MENTORING');
 
 -- CreateEnum
 CREATE TYPE "DefaultTheme" AS ENUM ('DARK', 'LIGHT');
@@ -63,10 +57,8 @@ CREATE TABLE "Project" (
     "tags" TEXT[],
     "stack" TEXT[],
     "metric" TEXT NOT NULL,
-    "proofType" "ProofType" NOT NULL DEFAULT 'NONE',
     "liveUrl" TEXT,
     "screenshots" JSONB NOT NULL DEFAULT '[]',
-    "architectureImg" TEXT,
     "overview" TEXT NOT NULL,
     "contribution" TEXT NOT NULL,
     "body" TEXT NOT NULL,
@@ -114,8 +106,9 @@ CREATE TABLE "Experience" (
     "role" TEXT NOT NULL,
     "company" TEXT NOT NULL,
     "location" TEXT NOT NULL,
-    "startDate" TEXT NOT NULL,
-    "endDate" TEXT NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3),
+    "logo" TEXT,
     "bullets" TEXT[],
     "order" INTEGER NOT NULL DEFAULT 0,
 
@@ -123,12 +116,26 @@ CREATE TABLE "Experience" (
 );
 
 -- CreateTable
+CREATE TABLE "Education" (
+    "id" TEXT NOT NULL,
+    "degree" TEXT NOT NULL,
+    "school" TEXT NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3),
+    "detail" TEXT,
+    "logo" TEXT,
+    "order" INTEGER NOT NULL DEFAULT 0,
+
+    CONSTRAINT "Education_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Achievement" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "year" TEXT,
-    "type" "AchievementType" NOT NULL,
+    "date" TIMESTAMP(3),
+    "image" TEXT,
     "order" INTEGER NOT NULL DEFAULT 0,
 
     CONSTRAINT "Achievement_pkey" PRIMARY KEY ("id")
@@ -163,9 +170,22 @@ CREATE TABLE "Media" (
     "width" INTEGER,
     "height" INTEGER,
     "type" TEXT,
+    "category" TEXT NOT NULL DEFAULT 'Misc',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Media_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Configuration" (
+    "id" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "items" JSONB NOT NULL DEFAULT '[]',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Configuration_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -183,6 +203,9 @@ CREATE TABLE "AdminUser" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Page_slug_key" ON "Page"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Page_title_key" ON "Page"("title");
 
 -- CreateIndex
 CREATE INDEX "Page_slug_idx" ON "Page"("slug");
@@ -230,13 +253,22 @@ CREATE INDEX "Skill_level_idx" ON "Skill"("level");
 CREATE INDEX "Experience_order_idx" ON "Experience"("order");
 
 -- CreateIndex
-CREATE INDEX "Achievement_type_order_idx" ON "Achievement"("type", "order");
+CREATE INDEX "Education_order_idx" ON "Education"("order");
+
+-- CreateIndex
+CREATE INDEX "Achievement_order_idx" ON "Achievement"("order");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Media_publicId_key" ON "Media"("publicId");
 
 -- CreateIndex
 CREATE INDEX "Media_publicId_idx" ON "Media"("publicId");
+
+-- CreateIndex
+CREATE INDEX "Media_category_idx" ON "Media"("category");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Configuration_key_key" ON "Configuration"("key");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AdminUser_email_key" ON "AdminUser"("email");

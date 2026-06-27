@@ -2,8 +2,8 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  ForbiddenException,
 } from '@nestjs/common';
+import { PageType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
@@ -36,14 +36,37 @@ export class PagesService {
     });
   }
 
-  // ── Admin: list ALL pages (with sections to support the section count display) ─
+  // ── Admin: list ALL pages (lightweight — fields + section count, no section bodies) ─
   findAllAdmin() {
     return this.prisma.page.findMany({
       orderBy: { navOrder: 'asc' },
-      include: {
-        sections: {
-          orderBy: { order: 'asc' },
-        },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        type: true,
+        published: true,
+        isSystem: true,
+        showInNav: true,
+        navOrder: true,
+        navLabel: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: { select: { sections: true } },
+      },
+    });
+  }
+
+  // ── Public: navigation items (showInNav=true, published=true, ordered by navOrder) ─
+  findNav() {
+    return this.prisma.page.findMany({
+      where: { showInNav: true, published: true },
+      orderBy: { navOrder: 'asc' },
+      select: {
+        slug: true,
+        title: true,
+        navLabel: true,
+        navOrder: true,
       },
     });
   }
@@ -107,36 +130,55 @@ export class PagesService {
 
   // ── Create ───────────────────────────────────────────────────────────────
   async create(dto: CreatePageDto) {
-    const existing = await this.prisma.page.findUnique({ where: { slug: dto.slug } });
-    if (existing) {
-      throw new ConflictException(`A page with slug "${dto.slug}" already exists.`);
+    try {
+      return await this.prisma.page.create({
+        data: { ...dto, type: dto.type ?? PageType.CUSTOM },
+      });
+    } catch (error) {
+      this.handleUniqueViolation(error);
     }
-    return this.prisma.page.create({ data: dto });
   }
 
   // ── Update ───────────────────────────────────────────────────────────────
   async update(id: string, dto: UpdatePageDto) {
     await this.findById(id);
 
-    // If slug is changing, check uniqueness
-    if (dto.slug) {
-      const conflict = await this.prisma.page.findFirst({
-        where: { slug: dto.slug, NOT: { id } },
-      });
-      if (conflict) {
-        throw new ConflictException(`A page with slug "${dto.slug}" already exists.`);
-      }
+    try {
+      return await this.prisma.page.update({ where: { id }, data: dto });
+    } catch (error) {
+      this.handleUniqueViolation(error);
     }
+  }
 
-    return this.prisma.page.update({ where: { id }, data: dto });
+  // ── Shared P2002 handler ─────────────────────────────────────────────────
+  private handleUniqueViolation(error: unknown): never {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const field = (error.meta?.target as string[] | undefined)?.[0];
+      if (field === 'slug') {
+        throw new ConflictException('A page with this slug already exists.');
+      }
+      if (field === 'title') {
+        throw new ConflictException('A page with this title already exists.');
+      }
+      throw new ConflictException('A page with this value already exists.');
+    }
+    throw error;
   }
 
   // ── Delete ───────────────────────────────────────────────────────────────
   async remove(id: string) {
-    const page = await this.findById(id);
-    if (page.isSystem) {
-      throw new ForbiddenException('System pages cannot be deleted.');
+    await this.findById(id);
+
+    const sectionCount = await this.prisma.section.count({ where: { pageId: id } });
+    if (sectionCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a page while it has sections. Remove all sections first.',
+      );
     }
+
     return this.prisma.page.delete({ where: { id } });
   }
 }

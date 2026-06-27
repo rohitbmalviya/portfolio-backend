@@ -40,10 +40,24 @@ export class BlogService {
     });
   }
 
-  // ── Admin: list all posts ─────────────────────────────────────────────
+  // ── Admin: single post by ID (any status) ─────────────────────────────
+  findById(id: string) {
+    return this.findOrThrow(id);
+  }
+
+  // ── Admin: list all posts (trimmed to the fields the list UI needs) ────
   findAllAdmin() {
     return this.prisma.blogPost.findMany({
       orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        published: true,
+        publishedAt: true,
+        readingTime: true,
+        createdAt: true,
+      },
     });
   }
 

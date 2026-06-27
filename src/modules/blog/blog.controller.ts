@@ -34,6 +34,16 @@ export class BlogController {
     return { data };
   }
 
+  // ── GET /api/blog/id/:id — admin (look up by primary key) ────────────────
+  // Must be declared BEFORE :slug so Express doesn't treat "id" as a slug.
+  @UseGuards(JwtAuthGuard)
+  @Get('id/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Admin] Get a blog post by its ID' })
+  async findOneById(@Param('id') id: string) {
+    return { data: await this.blogService.findById(id) };
+  }
+
   // ── GET /api/blog/:slug — public ─────────────────────────────────────────
   @Get(':slug')
   @ApiOperation({ summary: 'Get a blog post by slug. Pass ?admin=true for unpublished.' })
