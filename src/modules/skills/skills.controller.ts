@@ -22,12 +22,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class SkillsController {
   constructor(private readonly skillsService: SkillsService) {}
 
-  @Get()
-  @ApiOperation({ summary: 'List all skills ordered by group then order' })
-  async findAll() {
-    return { data: await this.skillsService.findAll() };
-  }
-
   // Declared BEFORE :id so "grouped" isn't treated as an id.
   @Get('grouped')
   @ApiOperation({ summary: 'Skills grouped by category (group + label + skills)' })

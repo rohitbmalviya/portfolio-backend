@@ -35,13 +35,6 @@ export class SkillsService {
     return skill;
   }
 
-  // ── Public: all skills ordered ───────────────────────────────────────────
-  findAll() {
-    return this.prisma.skill.findMany({
-      orderBy: [{ group: 'asc' }, { order: 'asc' }],
-    });
-  }
-
   // ── Skills grouped by category (canonical order; empty groups omitted) ────
   async findAllGrouped() {
     const skills = await this.prisma.skill.findMany({ orderBy: { order: 'asc' } });
