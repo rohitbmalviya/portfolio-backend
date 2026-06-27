@@ -382,7 +382,56 @@ The bank's production deployment is on-prem (VPN-only) under NDA. A **public dem
       published: true,
     },
 
-    // ── 2. Teamcast ─────────────────────────────────────────────────────────
+    // ── 2. Aquatech Autotool (client placement, Angular 19 frontend) ─────────
+    {
+      slug: "aquatech-autotool",
+      title: "Aquatech Autotool",
+      oneLiner:
+        "Water/process-engineering plant-design & technical-proposal automation.",
+      role: "Frontend UI Engineer (Angular 19) — redesigned ~60% of the frontend.",
+      tags: ["Angular 19", "React Flow", "RxJS", "TypeScript", "Frontend"],
+      stack: [
+        "Angular 19",
+        "React 19",
+        "@xyflow/react",
+        "Angular Material",
+        "RxJS",
+        "TypeScript",
+        "jsPDF",
+        "Django REST (consumed)",
+      ],
+      metric:
+        "~60% frontend redesign · React-Flow-in-Angular diagram editor · 91 components",
+      screenshots: [],
+      overview:
+        "An internal tool for water/process-engineering teams: enter a project's feed-water analysis and capacity, and it auto-selects the treatment scheme, computes the water/mass balance, lays out the block/P&ID diagram, builds the bill-of-quantities and costing, and generates the technical-proposal PDF — across desalination, industrial/ultrapure-water, and infrastructure plant types.",
+      contribution:
+        "Redesigned ~60% of the Angular 19 frontend and optimized load/runtime performance (lazy-loaded modules, OnPush, loader-suppressed background calls, debounced auto-save). Embedded a React 19 React-Flow diagram editor inside Angular via a custom cross-framework bridge, built a config-driven dynamic form engine, and delivered client-side multi-page PDF reporting.",
+      body: `## Product Context
+
+Aquatech Autotool is an internal estimation-and-proposal tool for water/process-engineering teams. From a project's feed-water analysis and capacity it auto-selects the treatment scheme, computes the water/mass balance, lays out the block/P&ID diagram, builds the bill-of-quantities and costing, and generates the technical-proposal PDF — across desalination, industrial/ultrapure-water, and infrastructure plant types.
+
+## My Role — Frontend UI Engineer
+
+Redesigned ~60% of the Angular 19 frontend (UI/UX overhaul) and optimized load/runtime performance, while owning the most differentiated parts of the UI.
+
+## Highlights
+
+- **React-in-Angular diagram editor** — embedded a React 19 React-Flow (@xyflow) interactive canvas inside the Angular 19 app via a custom cross-framework bridge: React mounted with \`ReactDOM.createRoot\`, data through Angular \`@Input/@Output\`, imperative control via \`window\` globals and a registered save callback.
+- **Custom node/edge system** — 5 node types, 4 edge types, multi-handle connections, drag-and-drop placement, multi-select delete, and a missing-data highlight overlay.
+- **Client-side PDF reporting** — jsPDF + html-to-image capture of the live React-Flow canvas, with bounds/viewport math and font-ready sync, into paginated A4 reports.
+- **Config-driven dynamic form engine** — 11 field types across tabbed/sectioned/repeating layouts, with api/static option sources and api/formula computed fields.
+- **Reactive cross-field logic** — RxJS \`combineLatest\` + \`debounce\` + \`distinctUntilChanged\` for live formula recompute, auto-fill triggers, and silent debounced auto-save with \`localStorage\` caching.
+
+## Stack
+
+Angular 19 (standalone) · React 19 / @xyflow React-Flow · Angular Material · RxJS · jsPDF — integrated with a Django REST API.`,
+      featured: true,
+      order: 1,
+      published: true,
+    },
+
+    // ── 7. Teamcast ─────────────────────────────────────────────────────────
     {
       slug: "teamcast",
       title: "Teamcast",
@@ -455,12 +504,12 @@ Express API (system of record)
 ## Frontend Portals
 
 Candidate Portal: application status, assessment submissions, interview scheduling. Client Portal: full hiring dashboard, job management, candidate review, ATS configuration.`,
-      featured: true,
-      order: 1,
+      featured: false,
+      order: 6,
       published: true,
     },
 
-    // ── 3. Meet Scribe ──────────────────────────────────────────────────────
+    // ── 5. Meet Scribe ──────────────────────────────────────────────────────
     {
       slug: "meet-scribe",
       title: "Meet Scribe",
@@ -539,11 +588,11 @@ Google Cloud Speech returns segments with speaker tags. Gemini is called with th
 - Map speaker tags to participant display names (joined from the meeting roster).
 - Generate a structured summary (key decisions, action items, MOM draft).`,
       featured: true,
-      order: 2,
+      order: 4,
       published: true,
     },
 
-    // ── 4. Lease Oasis ──────────────────────────────────────────────────────
+    // ── 6. Lease Oasis ──────────────────────────────────────────────────────
     {
       slug: "lease-oasis",
       title: "Lease Oasis",
@@ -619,11 +668,11 @@ LangGraph's checkpointing keeps conversation history for follow-up questions.
 
 14-page Admin app: landlord management, listing approval, fraud flagging, subscription management, reports. 8-page Operator app: daily inquiry pipeline, viewing schedule, deal tracking.`,
       featured: true,
-      order: 3,
+      order: 5,
       published: true,
     },
 
-    // ── 5. Medic AI ─────────────────────────────────────────────────────────
+    // ── 4. Medic AI ─────────────────────────────────────────────────────────
     {
       slug: "medic-ai",
       title: "Medic AI",
@@ -678,11 +727,11 @@ The partner domain is the business-critical path:
 
 A single Express middleware layer reads the JWT \`role\` claim and attaches the appropriate Prisma scope (e.g., \`partnerId\` filter) before every controller handler — keeping the business logic clean and preventing cross-partner data leakage.`,
       featured: false,
-      order: 4,
+      order: 3,
       published: true,
     },
 
-    // ── 6. Avaloq GBS ───────────────────────────────────────────────────────
+    // ── 3. Avaloq GBS ───────────────────────────────────────────────────────
     {
       slug: "avaloq-gbs",
       title: "Avaloq GBS",
@@ -731,11 +780,11 @@ MiFID II suitability requires live recalculation as the user answers questions. 
 
 The project enforced strict ESLint rules, mandatory code reviews, component size limits, and accessibility (WCAG AA) — standard practice for regulated financial software shipped to multiple bank customers.`,
       featured: false,
-      order: 5,
+      order: 2,
       published: true,
     },
 
-    // ── 7. OMS ──────────────────────────────────────────────────────────────
+    // ── 9. OMS ──────────────────────────────────────────────────────────────
     {
       slug: "oms",
       title: "OMS",
@@ -800,7 +849,7 @@ internal/
 
 27 components across: employee management, department config, shift settings, daily punch review, muster-roll report (with XLSX export via \`xlsx\` library), leave management, and role-based dashboards (HR admin / manager / employee).`,
       featured: false,
-      order: 6,
+      order: 8,
       published: true,
     },
 
