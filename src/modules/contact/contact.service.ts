@@ -191,8 +191,37 @@ export class ContactService {
     return threads.map(({ messages, _count, ...rest }) => ({
       ...rest,
       messageCount: _count.messages,
-      lastSnippet: (messages[0]?.body ?? '').substring(0, 120),
+      lastSnippet: this.snippetOf(messages[0]?.body ?? ''),
     }));
+  }
+
+  /**
+   * Builds a clean one-line preview: strips quoted reply history
+   * (the `On … wrote:` / `>` / `-----Original Message-----` block),
+   * collapses whitespace, and truncates to 120 chars.
+   */
+  private snippetOf(body: string): string {
+    const text = (body ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = text.split('\n');
+    let cut = lines.length;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      const isQuote =
+        line.startsWith('>') ||
+        /^-{3,}\s*original message\s*-{3,}/i.test(line) ||
+        /^_{5,}$/.test(line) ||
+        /^on\b.*\bwrote:$/i.test(line) ||
+        (/^on\b/i.test(line) &&
+          i + 1 < lines.length &&
+          /\bwrote:$/i.test(lines[i + 1].trim()));
+      if (isQuote) {
+        cut = i;
+        break;
+      }
+    }
+    let visible = lines.slice(0, cut).join('\n').trim();
+    if (!visible) visible = text.trim(); // whole body was a quote — don't blank it
+    return visible.replace(/\s+/g, ' ').trim().substring(0, 120);
   }
 
   /**
