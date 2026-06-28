@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ContactService } from './contact.service';
+import { ComposeContactDto } from './dto/compose-contact.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { ReplyContactDto } from './dto/reply-contact.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -55,6 +56,24 @@ export class ContactController {
   @ApiOperation({ summary: '[Admin] Manually trigger Gmail thread sync' })
   async sync() {
     return { data: await this.contactService.syncAll() };
+  }
+
+  // Declared BEFORE threads/:id so Express does not treat "compose" as an id.
+  @UseGuards(JwtAuthGuard)
+  @Post('compose')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Admin] Compose a new outbound email thread to any recipient' })
+  async compose(@Body() dto: ComposeContactDto) {
+    return { data: await this.contactService.compose(dto) };
+  }
+
+  // Declared BEFORE threads/:id so Express does not treat "read-all" as an id.
+  @UseGuards(JwtAuthGuard)
+  @Patch('read-all')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '[Admin] Mark all contact threads as read' })
+  async markAllRead() {
+    return { data: await this.contactService.markAllRead() };
   }
 
   // ── ADMIN — parameterised routes ─────────────────────────────────────────

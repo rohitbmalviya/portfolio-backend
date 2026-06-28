@@ -1,6 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { google, gmail_v1 } from 'googleapis';
 import { ContactThread } from '@prisma/client';
+import {
+  ReplySignature,
+  notificationEmailHtml,
+  replyEmailHtml,
+} from './email-templates';
+
+export type { ReplySignature };
 
 export interface NormalizedGmailMessage {
   gmailMessageId: string;
@@ -17,8 +24,14 @@ export interface NormalizedGmailMessage {
  *   - https://www.googleapis.com/auth/gmail.readonly (read threads)
  *
  * Required env vars: GMAIL_USER, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN.
- * When any is missing, isConfigured() returns false and all send/sync operations become no-ops
- * that log a warning — the contact form still saves messages to the database.
+ * Optional env vars: ADMIN_MESSAGES_URL (default http://localhost:3000/admin/messages).
+ *
+ * When any required var is missing, isConfigured() returns false and all send/sync
+ * operations become no-ops that log a warning — the contact form still saves to the DB.
+ *
+ * MIME format: every outgoing message is multipart/alternative with a text/plain fallback
+ * part and a text/html branded-template part.  Clients that cannot render HTML fall back
+ * to the plain-text part automatically per RFC 2046 §5.1.4.
  */
 @Injectable()
 export class GmailService {
@@ -44,14 +57,68 @@ export class GmailService {
   }
 
   /**
-   * Encode a raw RFC 822 MIME message to base64url for the Gmail API.
+   * Build a multipart/alternative RFC 822 MIME message and return it as a
+   * base64url string suitable for the Gmail API `raw` field.
+   *
+   * The message structure:
+   *   headers (From, To, Subject, …)
+   *   Content-Type: multipart/alternative; boundary="…"
+   *
+   *   --boundary
+   *   Content-Type: text/plain; charset=utf-8
+   *   Content-Transfer-Encoding: base64
+   *   <base64-encoded plain text>
+   *
+   *   --boundary
+   *   Content-Type: text/html; charset=utf-8
+   *   Content-Transfer-Encoding: base64
+   *   <base64-encoded HTML>
+   *
+   *   --boundary--
+   *
+   * The outer message is itself base64url-encoded for the Gmail REST API.
    */
-  private buildRaw(headers: Record<string, string>, body: string): string {
+  private buildMultipartRaw(
+    headers: Record<string, string>,
+    plainText: string,
+    htmlText: string,
+  ): string {
+    // Unique boundary — safe characters only, no leading hyphens
+    const boundary = `_PART_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+    /** Wrap a base64 string at 76 characters per line (RFC 2045 §6.8). */
+    const wrap76 = (b64: string): string =>
+      (b64.match(/.{1,76}/g) ?? [b64]).join('\r\n');
+
+    const plainB64 = wrap76(Buffer.from(plainText, 'utf-8').toString('base64'));
+    const htmlB64 = wrap76(Buffer.from(htmlText, 'utf-8').toString('base64'));
+
+    // Build the top-level header block (caller supplies MIME-Version; we add Content-Type)
     const headerBlock = Object.entries(headers)
       .map(([k, v]) => `${k}: ${v}`)
       .join('\r\n');
-    const message = `${headerBlock}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${body}`;
-    return Buffer.from(message)
+
+    const mime = [
+      headerBlock,
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/plain; charset=utf-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      plainB64,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/html; charset=utf-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      htmlB64,
+      '',
+      `--${boundary}--`,
+    ].join('\r\n');
+
+    // base64url-encode the entire RFC 822 message for the Gmail API
+    return Buffer.from(mime)
       .toString('base64')
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
@@ -105,7 +172,11 @@ export class GmailService {
 
   /**
    * Send a self-notification email (From: GMAIL_USER → To: GMAIL_USER, Reply-To: visitor).
-   * Returns the Gmail message ID and thread ID so the caller can persist them for deduplication.
+   *
+   * Sends multipart/alternative: a plain-text fallback and the branded HTML notification
+   * template.  `adminUrl` defaults to process.env.ADMIN_MESSAGES_URL if not passed.
+   *
+   * Returns the Gmail message ID and thread ID so the caller can persist them.
    */
   async sendNotification(
     thread: Pick<ContactThread, 'name' | 'email' | 'subject'>,
@@ -116,23 +187,41 @@ export class GmailService {
       return { id: '', threadId: '' };
     }
 
+    const adminUrl =
+      process.env.ADMIN_MESSAGES_URL ?? 'http://localhost:3000/admin/messages';
+    const receivedAt = new Date();
     const subject = `New portfolio message from ${thread.name}`;
-    const body = [
-      'You received a new contact form submission on your portfolio.',
+
+    // ── Plain-text fallback ─────────────────────────────────────────────────
+    const plain = [
+      'You received a new message via your portfolio contact form.',
       '',
-      `Name:    ${thread.name}`,
-      `Email:   ${thread.email}`,
-      `Subject: ${thread.subject ?? '(none)'}`,
+      `From:     ${thread.name}`,
+      `Email:    ${thread.email}`,
+      `Subject:  ${thread.subject ?? '(none)'}`,
+      `Received: ${receivedAt.toUTCString()}`,
       '',
       '──────────────────────────────────────────',
       bodyText,
       '──────────────────────────────────────────',
       '',
-      'Reply to this email to respond directly to the visitor,',
+      `↩ Reply to this email to respond directly to ${thread.name},`,
       'or use the admin panel to send a tracked reply.',
+      '',
+      `Admin panel: ${adminUrl}`,
     ].join('\n');
 
-    const raw = this.buildRaw(
+    // ── Branded HTML ────────────────────────────────────────────────────────
+    const html = notificationEmailHtml({
+      name: thread.name,
+      email: thread.email,
+      subject: thread.subject,
+      message: bodyText,
+      receivedAt,
+      adminUrl,
+    });
+
+    const raw = this.buildMultipartRaw(
       {
         'MIME-Version': '1.0',
         From: this.gmailUser!,
@@ -140,7 +229,8 @@ export class GmailService {
         'Reply-To': thread.email,
         Subject: subject,
       },
-      body,
+      plain,
+      html,
     );
 
     const gmail = this.getClient();
@@ -159,14 +249,104 @@ export class GmailService {
   }
 
   /**
+   * Send a brand-new outbound email (From: GMAIL_USER → To: any recipient) that starts
+   * a fresh Gmail thread.  Uses the same multipart/alternative + branded HTML template
+   * as sendReply but omits the threadId so Gmail creates a new thread.
+   *
+   * Returns both { id, threadId } so the caller can persist the Gmail references.
+   */
+  async sendCompose(
+    to: string,
+    subject: string | null,
+    bodyText: string,
+    signature: ReplySignature,
+  ): Promise<{ id: string; threadId: string }> {
+    if (!this.isConfigured()) {
+      this.logger.warn('GmailService not configured — sendCompose skipped');
+      return { id: '', threadId: '' };
+    }
+
+    const emailSubject = subject ?? '(no subject)';
+
+    // ── Plain-text fallback ─────────────────────────────────────────────────
+    const plain = [
+      bodyText,
+      '',
+      '--',
+      signature.name,
+      signature.role,
+      `${signature.portfolioUrl}  ·  LinkedIn: ${signature.linkedinUrl}  ·  GitHub: ${signature.githubUrl}`,
+      signature.email,
+    ].join('\n');
+
+    // ── Branded HTML (reuses the same reply template) ───────────────────────
+    const html = replyEmailHtml({ bodyText, signature });
+
+    const raw = this.buildMultipartRaw(
+      {
+        'MIME-Version': '1.0',
+        From: this.gmailUser!,
+        To: to,
+        Subject: emailSubject,
+      },
+      plain,
+      html,
+    );
+
+    const gmail = this.getClient();
+    // No threadId in requestBody → Gmail starts a new thread
+    const res = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: { raw },
+    });
+
+    const id = res.data.id;
+    const threadId = res.data.threadId;
+    if (!id || !threadId) {
+      throw new Error('Gmail API returned empty id/threadId from sendCompose');
+    }
+
+    return { id, threadId };
+  }
+
+  /**
+   * Remove the UNREAD label from a Gmail thread (mirror of markRead in the DB).
+   *
+   * Requires the gmail.modify scope.  Silently no-ops when Gmail is unconfigured
+   * and catches any API error as a warning — never throws so callers never fail.
+   */
+  async markThreadRead(gmailThreadId: string): Promise<void> {
+    if (!this.isConfigured()) {
+      this.logger.warn('GmailService not configured — markThreadRead skipped');
+      return;
+    }
+
+    try {
+      const gmail = this.getClient();
+      await gmail.users.threads.modify({
+        userId: 'me',
+        id: gmailThreadId,
+        requestBody: { removeLabelIds: ['UNREAD'] },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `markThreadRead: Gmail API call failed for thread ${gmailThreadId} — ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  /**
    * Send a reply from admin (GMAIL_USER) to the visitor.
+   *
+   * Sends multipart/alternative: a plain-text fallback (body + plain-text signature)
+   * and the branded HTML reply template with the full signature block.
+   *
    * Passes gmailThreadId so the message lands in the same Gmail thread AND in Sent.
-   * In-Reply-To/References are not set here because we don't store the original Message-ID;
-   * Gmail's threadId parameter is sufficient to keep the conversation grouped.
    */
   async sendReply(
     thread: Pick<ContactThread, 'name' | 'email' | 'subject' | 'gmailThreadId'>,
     bodyText: string,
+    signature: ReplySignature,
   ): Promise<{ id: string }> {
     if (!this.isConfigured()) {
       this.logger.warn('GmailService not configured — sendReply skipped');
@@ -175,14 +355,29 @@ export class GmailService {
 
     const subject = `Re: ${thread.subject ?? 'your message'}`;
 
-    const raw = this.buildRaw(
+    // ── Plain-text fallback ─────────────────────────────────────────────────
+    const plain = [
+      bodyText,
+      '',
+      '--',
+      signature.name,
+      signature.role,
+      `${signature.portfolioUrl}  ·  LinkedIn: ${signature.linkedinUrl}  ·  GitHub: ${signature.githubUrl}`,
+      signature.email,
+    ].join('\n');
+
+    // ── Branded HTML ────────────────────────────────────────────────────────
+    const html = replyEmailHtml({ bodyText, signature });
+
+    const raw = this.buildMultipartRaw(
       {
         'MIME-Version': '1.0',
         From: this.gmailUser!,
         To: thread.email,
         Subject: subject,
       },
-      bodyText,
+      plain,
+      html,
     );
 
     const gmail = this.getClient();
