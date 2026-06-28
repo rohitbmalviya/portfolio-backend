@@ -28,11 +28,6 @@ export class CreateEducationDto {
   @IsOptional()
   detail?: string;
 
-  @ApiPropertyOptional({ description: 'Institution logo URL (Cloudinary)' })
-  @IsString()
-  @IsOptional()
-  logo?: string | null;
-
   @ApiPropertyOptional({ default: 0 })
   @IsInt()
   @Min(0)

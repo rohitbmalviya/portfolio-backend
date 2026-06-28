@@ -59,6 +59,7 @@ export class MediaService {
   async uploadFile(
     file: Express.Multer.File,
     dto: CreateMediaDto,
+    createdById?: string,
   ) {
     // Validate MIME type
     if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
@@ -122,6 +123,13 @@ export class MediaService {
         type: toWebp ? 'image/webp' : file.mimetype,
         // Stored category mirrors the bucket: Projects / Blogs / Raw
         category: MEDIA_BUCKET_LABEL[bucket],
+        // Uploader is the creator for audit purposes
+        ...(createdById ? { createdById } : {}),
+        // Deferred-upload flow: link to owner at upload time when provided
+        ...(dto.ownerId ? { ownerId: dto.ownerId } : {}),
+        ...(dto.ownerType ? { ownerType: dto.ownerType } : {}),
+        ...(dto.usage ? { usage: dto.usage } : {}),
+        ...(dto.order !== undefined ? { order: dto.order } : {}),
       },
     });
 
@@ -129,16 +137,19 @@ export class MediaService {
     return media;
   }
 
-  // ── Update metadata (category / alt) ─────────────────────────────────────
-  async update(id: string, dto: UpdateMediaDto) {
+  // ── Update metadata (order / alt / usage / category) ─────────────────────
+  async update(id: string, dto: UpdateMediaDto, userId?: string) {
     const existing = await this.prisma.media.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Media "${id}" not found.`);
     }
-    return this.prisma.media.update({ where: { id }, data: dto });
+    return this.prisma.media.update({
+      where: { id },
+      data: { ...dto, ...(userId ? { updatedById: userId } : {}) },
+    });
   }
 
-  // ── Delete from Cloudinary + DB ──────────────────────────────────────────
+  // ── Hard-delete: remove from Cloudinary AND from DB ──────────────────────
   async remove(id: string) {
     const media = await this.prisma.media.findUnique({ where: { id } });
     if (!media) {
@@ -148,10 +159,12 @@ export class MediaService {
     // Seeded local assets (publicId "local/…") aren't on Cloudinary — skip.
     if (!media.publicId.startsWith('local/')) {
       try {
-        await this.cloudinary.deleteByPublicId(media.publicId);
+        await this.cloudinary.destroy(media.publicId);
       } catch (err: unknown) {
         // Log but don't block DB cleanup if Cloudinary delete fails
-        this.logger.warn(`Cloudinary delete failed for "${media.publicId}": ${String(err)}`);
+        this.logger.warn(
+          `Cloudinary destroy failed for "${media.publicId}": ${String(err)}`,
+        );
       }
     }
 

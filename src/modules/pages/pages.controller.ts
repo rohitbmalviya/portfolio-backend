@@ -17,10 +17,12 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { AdminUser } from '@prisma/client';
 import { PagesService } from './pages.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('pages')
 @Controller('pages')
@@ -38,8 +40,7 @@ export class PagesController {
     return { data: await this.pagesService.findAllPublic() };
   }
 
-  // ── GET /api/pages/id/:id — admin (look up by primary key) ─────────────────
-  // Must be declared BEFORE :slug to avoid Express treating "id" as a slug value.
+  // ── GET /api/pages/id/:id — admin ──────────────────────────────────────
   @UseGuards(JwtAuthGuard)
   @Get('id/:id')
   @ApiBearerAuth()
@@ -49,8 +50,6 @@ export class PagesController {
   }
 
   // ── GET /api/pages/nav — public navigation items ────────────────────────
-  // IMPORTANT: must be declared before @Get(':slug') so Express does not
-  // treat the literal string "nav" as a slug parameter.
   @Get('nav')
   @ApiOperation({
     summary: 'Public nav items — pages with showInNav=true and published=true, ordered by navOrder',
@@ -59,7 +58,7 @@ export class PagesController {
     return { data: await this.pagesService.findNav() };
   }
 
-  // ── GET /api/pages/:slug — public (enabled sections) or admin (all sections) ─
+  // ── GET /api/pages/:slug ────────────────────────────────────────────────
   @Get(':slug')
   @ApiOperation({ summary: 'Get a page by slug with its sections. Pass ?admin=true for all sections.' })
   @ApiQuery({ name: 'admin', required: false, type: Boolean })
@@ -75,8 +74,11 @@ export class PagesController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create a new page' })
-  async create(@Body() dto: CreatePageDto) {
-    return { data: await this.pagesService.create(dto) };
+  async create(
+    @Body() dto: CreatePageDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.pagesService.create(dto, user.id) };
   }
 
   // ── PATCH /api/pages/:id — admin ─────────────────────────────────────────
@@ -84,8 +86,12 @@ export class PagesController {
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Update a page by ID' })
-  async update(@Param('id') id: string, @Body() dto: UpdatePageDto) {
-    return { data: await this.pagesService.update(id, dto) };
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePageDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.pagesService.update(id, dto, user.id) };
   }
 
   // ── DELETE /api/pages/:id — admin ────────────────────────────────────────

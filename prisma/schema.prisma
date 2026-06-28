@@ -48,18 +48,124 @@ enum DefaultTheme {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  ADMIN USER  —  single admin (Rohit); seeded from env
+//  No createdBy/updatedBy on AdminUser itself — it is the
+//  audit principal, seeded from env, not subject to the trail.
+// ─────────────────────────────────────────────────────────────
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // ── Audit back-relations — one created/updated pair per audited model ──────
+
+  createdProjects        Project[]        @relation("ProjectCreatedBy")
+  updatedProjects        Project[]        @relation("ProjectUpdatedBy")
+
+  createdBlogPosts       BlogPost[]       @relation("BlogPostCreatedBy")
+  updatedBlogPosts       BlogPost[]       @relation("BlogPostUpdatedBy")
+
+  createdExperiences     Experience[]     @relation("ExperienceCreatedBy")
+  updatedExperiences     Experience[]     @relation("ExperienceUpdatedBy")
+
+  createdEducations      Education[]      @relation("EducationCreatedBy")
+  updatedEducations      Education[]      @relation("EducationUpdatedBy")
+
+  createdAchievements    Achievement[]    @relation("AchievementCreatedBy")
+  updatedAchievements    Achievement[]    @relation("AchievementUpdatedBy")
+
+  createdSkills          Skill[]          @relation("SkillCreatedBy")
+  updatedSkills          Skill[]          @relation("SkillUpdatedBy")
+
+  createdPages           Page[]           @relation("PageCreatedBy")
+  updatedPages           Page[]           @relation("PageUpdatedBy")
+
+  createdMedia           Media[]          @relation("MediaCreatedBy")
+  updatedMedia           Media[]          @relation("MediaUpdatedBy")
+
+  createdSiteSettings    SiteSettings[]   @relation("SiteSettingsCreatedBy")
+  updatedSiteSettings    SiteSettings[]   @relation("SiteSettingsUpdatedBy")
+
+  createdConfigurations  Configuration[]  @relation("ConfigurationCreatedBy")
+  updatedConfigurations  Configuration[]  @relation("ConfigurationUpdatedBy")
+
+  createdSections        Section[]        @relation("SectionCreatedBy")
+  updatedSections        Section[]        @relation("SectionUpdatedBy")
+
+  createdContactThreads  ContactThread[]  @relation("ContactThreadCreatedBy")
+  updatedContactThreads  ContactThread[]  @relation("ContactThreadUpdatedBy")
+
+  createdContactMessages ContactMessage[] @relation("ContactMessageCreatedBy")
+  updatedContactMessages ContactMessage[] @relation("ContactMessageUpdatedBy")
+
+  @@index([email])
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MEDIA  —  Cloudinary-backed asset record
+//
+//  Polymorphic owner reference: ownerType + ownerId replace
+//  the previous 7 typed FK columns.  Linking happens at upload
+//  time (deferred-upload flow): the frontend POSTs the file with
+//  ownerId + ownerType already set so the row is linked immediately.
+//
+//  ownerType values: 'project' | 'blog' | 'experience' |
+//                    'education' | 'achievement' | 'page' | 'settings'
+//
+//  `usage` discriminates multi-purpose owners, e.g. on settings:
+//    usage='resume'  → resume file
+//    usage='og'      → OG image
+// ─────────────────────────────────────────────────────────────
+
+model Media {
+  id            String   @id @default(cuid())
+  cloudinaryUrl String
+  publicId      String   @unique
+  alt           String?
+  width         Int?
+  height        Int?
+  /// e.g. "image/jpeg", "image/png", "image/webp"
+  type          String?
+  /// Library grouping, e.g. "Projects", "Blog", "Raw"
+  category      String   @default("Misc")
+  createdAt     DateTime @default(now())
+  /// Display order within the owning collection (0-based)
+  order         Int      @default(0)
+  /// Discriminator for multi-purpose owners, e.g. "resume" | "og" on SiteSettings
+  usage         String?
+
+  // Polymorphic owner reference
+  ownerId   String?
+  ownerType String?
+
+  // Audit trail — uploader IS the creator
+  createdById String?
+  createdBy   AdminUser? @relation("MediaCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("MediaUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([ownerType, ownerId, order])
+  @@index([publicId])
+  @@index([category])
+  @@index([createdById])
+}
+
+// ─────────────────────────────────────────────────────────────
 //  PAGE  —  a URL-addressable page composed of ordered Sections
 // ─────────────────────────────────────────────────────────────
 
 model Page {
   id              String    @id @default(cuid())
   slug            String    @unique
-  /// Title must also be unique across pages. Migration required after this change:
-  ///   npx prisma migrate dev --name add_page_title_unique
+  /// Title must also be unique across pages.
   title           String    @unique
   metaTitle       String?
   metaDescription String?
-  ogImage         String?
   navLabel        String?
   navOrder        Int       @default(0)
   showInNav       Boolean   @default(false)
@@ -69,10 +175,17 @@ model Page {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  // Audit trail (replaces the old required authorId)
+  createdById String?
+  createdBy   AdminUser? @relation("PageCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("PageUpdatedBy", fields: [updatedById], references: [id])
+
   sections Section[]
 
   @@index([slug])
   @@index([showInNav, navOrder])
+  @@index([createdById])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -88,15 +201,21 @@ model Section {
   order     Int         @default(0)
   enabled   Boolean     @default(true)
   /// Flexible JSON payload — shape is determined by `type` (see step4 §3.2).
-  /// Typed in the shared-types package; stored as opaque JSON here.
   data      Json        @default("{}")
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
   page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
+  // Audit trail
+  createdById String?
+  createdBy   AdminUser? @relation("SectionCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("SectionUpdatedBy", fields: [updatedById], references: [id])
+
   @@index([pageId, order])
   @@index([pageId, enabled])
+  @@index([createdById])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -104,33 +223,38 @@ model Section {
 // ─────────────────────────────────────────────────────────────
 
 model Project {
-  id              String    @id @default(cuid())
-  slug            String    @unique
-  title           String
-  oneLiner        String
-  role            String
-  tags            String[]
-  stack           String[]
-  /// Headline metric string displayed on the card (e.g. "148 Prisma models · ~185-endpoint backend")
-  metric          String
-  liveUrl         String?
-  /// Stored as JSON array of { url: string, alt: string }
-  screenshots     Json      @default("[]")
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  title        String
+  oneLiner     String
+  role         String
+  tags         String[]
+  stack        String[]
+  /// Headline metric string displayed on the card
+  metric       String
+  liveUrl      String?
   /// Short overview paragraph shown in the detail page header
-  overview        String    @db.Text
-  /// "My Contribution" section — describes Rohit's specific role & work
-  contribution    String    @db.Text
-  /// Full MDX body for the detail page (architecture, stack deep-dive, lessons)
-  body            String    @db.Text
-  featured        Boolean   @default(false)
-  order           Int       @default(0)
-  published       Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  overview     String   @db.Text
+  /// "My Contribution" section
+  contribution String   @db.Text
+  /// Full MDX body for the detail page
+  body         String   @db.Text
+  featured     Boolean  @default(false)
+  order        Int      @default(0)
+  published    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Audit trail (replaces the old required authorId)
+  createdById String?
+  createdBy   AdminUser? @relation("ProjectCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("ProjectUpdatedBy", fields: [updatedById], references: [id])
 
   @@index([slug])
   @@index([featured, order])
   @@index([published, order])
+  @@index([createdById])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -142,9 +266,8 @@ model BlogPost {
   slug        String    @unique
   title       String
   excerpt     String
-  coverImage  String?
   tags        String[]
-  /// Full MDX body (authored in admin, rendered on public with syntax highlighting)
+  /// Full MDX body
   body        String    @db.Text
   readingTime Int?
   published   Boolean   @default(false)
@@ -152,8 +275,15 @@ model BlogPost {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Audit trail (replaces the old required authorId)
+  createdById String?
+  createdBy   AdminUser? @relation("BlogPostCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("BlogPostUpdatedBy", fields: [updatedById], references: [id])
+
   @@index([slug])
   @@index([published, publishedAt])
+  @@index([createdById])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -167,8 +297,15 @@ model Skill {
   level SkillLevel
   order Int        @default(0)
 
+  // Audit trail (replaces the old required authorId)
+  createdById String?
+  createdBy   AdminUser? @relation("SkillCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("SkillUpdatedBy", fields: [updatedById], references: [id])
+
   @@index([group, order])
   @@index([level])
+  @@index([createdById])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -183,18 +320,21 @@ model Experience {
   startDate DateTime
   /// null = "Present" (current role)
   endDate   DateTime?
-  /// Optional company logo — Cloudinary URL
-  logo      String?
   bullets   String[]
   order     Int       @default(0)
 
+  // Audit trail (replaces the old required authorId)
+  createdById String?
+  createdBy   AdminUser? @relation("ExperienceCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("ExperienceUpdatedBy", fields: [updatedById], references: [id])
+
   @@index([order])
+  @@index([createdById])
 }
 
 // ─────────────────────────────────────────────────────────────
-//  EDUCATION  (degrees, institutions)
-//  NOTE: adding this model requires a migration —
-//  run `npx prisma migrate dev --name add_education`.
+//  EDUCATION
 // ─────────────────────────────────────────────────────────────
 
 model Education {
@@ -202,14 +342,19 @@ model Education {
   degree    String
   school    String
   startDate DateTime
-  /// null = ongoing / "Present" (currently studying)
+  /// null = ongoing / "Present"
   endDate   DateTime?
   detail    String?
-  /// Optional institution logo — Cloudinary URL
-  logo      String?
   order     Int       @default(0)
 
+  // Audit trail (replaces the old required authorId)
+  createdById String?
+  createdBy   AdminUser? @relation("EducationCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("EducationUpdatedBy", fields: [updatedById], references: [id])
+
   @@index([order])
+  @@index([createdById])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -222,11 +367,16 @@ model Achievement {
   description String
   /// Date the achievement was earned (null = unspecified)
   date        DateTime?
-  /// Optional photo (e.g. award certificate) — Cloudinary URL
-  image       String?
   order       Int       @default(0)
 
+  // Audit trail (replaces the old required authorId)
+  createdById String?
+  createdBy   AdminUser? @relation("AchievementCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("AchievementUpdatedBy", fields: [updatedById], references: [id])
+
   @@index([order])
+  @@index([createdById])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -242,7 +392,6 @@ model SiteSettings {
   location      String
   /// JSON: { github: string, linkedin: string, twitter?: string }
   socials       Json
-  resumeUrl     String?
   defaultTheme  DefaultTheme @default(DARK)
   brandAccent   String?
   footerText    String?
@@ -250,40 +399,16 @@ model SiteSettings {
   ogDescription String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+
+  // Audit trail
+  createdById String?
+  createdBy   AdminUser? @relation("SiteSettingsCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("SiteSettingsUpdatedBy", fields: [updatedById], references: [id])
 }
-
-// ─────────────────────────────────────────────────────────────
-//  MEDIA  —  Cloudinary-backed asset record
-// ─────────────────────────────────────────────────────────────
-
-model Media {
-  id           String   @id @default(cuid())
-  cloudinaryUrl String
-  publicId     String   @unique
-  alt          String?
-  width        Int?
-  height       Int?
-  /// e.g. "image/jpeg", "image/png", "image/webp"
-  type         String?
-  /// Library grouping, e.g. "Projects", "Blog", "Awards", "Profile", "Misc"
-  category     String   @default("Misc")
-  createdAt    DateTime @default(now())
-
-  @@index([publicId])
-  @@index([category])
-}
-
-// ─────────────────────────────────────────────────────────────
-//  ADMIN USER  —  single admin (Rohit); seeded from env
-// ─────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────
 //  CONFIGURATION  — admin-editable option lists for dropdowns
-//  (e.g. contact link types, social link types, skill groups).
-//  NOTE: schema enums (SectionType, SkillLevel, …) stay
-//  code-defined and are served read-only via GET /api/config/enums.
-//  SkillGroup was intentionally removed as a Prisma enum — group
-//  ordering and labels now live in the `skill_groups` config row.
 // ─────────────────────────────────────────────────────────────
 
 model Configuration {
@@ -295,18 +420,14 @@ model Configuration {
   items     Json     @default("[]")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
 
-model AdminUser {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String
-  name         String
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  // Audit trail
+  createdById String?
+  createdBy   AdminUser? @relation("ConfigurationCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("ConfigurationUpdatedBy", fields: [updatedById], references: [id])
 
-  @@index([email])
+  @@index([createdById])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -327,9 +448,17 @@ model ContactThread {
   lastMessageAt DateTime @default(now())
   createdAt     DateTime @default(now())
 
+  // Audit trail — createdById stays NULL for web/Gmail-sync created threads;
+  // updatedById is set to the admin id on reply/compose/markRead/markAllRead.
+  createdById String?
+  createdBy   AdminUser? @relation("ContactThreadCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("ContactThreadUpdatedBy", fields: [updatedById], references: [id])
+
   messages ContactMessage[]
 
   @@index([lastMessageAt])
+  @@index([updatedById])
 }
 
 model ContactMessage {
@@ -346,5 +475,14 @@ model ContactMessage {
 
   thread ContactThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
+  // Audit trail — createdById set to admin id for outbound app messages;
+  // NULL for inbound visitor messages and Gmail-synced messages.
+  // updatedById stays NULL (messages are immutable after creation).
+  createdById String?
+  createdBy   AdminUser? @relation("ContactMessageCreatedBy", fields: [createdById], references: [id])
+  updatedById String?
+  updatedBy   AdminUser? @relation("ContactMessageUpdatedBy", fields: [updatedById], references: [id])
+
   @@index([threadId, createdAt])
+  @@index([createdById])
 }

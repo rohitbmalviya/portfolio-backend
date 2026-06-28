@@ -12,10 +12,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { AdminUser } from '@prisma/client';
 import { BlogService } from './blog.service';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('blog')
 @Controller('blog')
@@ -35,7 +37,6 @@ export class BlogController {
   }
 
   // ── GET /api/blog/id/:id — admin (look up by primary key) ────────────────
-  // Must be declared BEFORE :slug so Express doesn't treat "id" as a slug.
   @UseGuards(JwtAuthGuard)
   @Get('id/:id')
   @ApiBearerAuth()
@@ -64,8 +65,11 @@ export class BlogController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create a blog post' })
-  async create(@Body() dto: CreateBlogPostDto) {
-    return { data: await this.blogService.create(dto) };
+  async create(
+    @Body() dto: CreateBlogPostDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.blogService.create(dto, user.id) };
   }
 
   // ── PATCH /api/blog/:id/publish — admin ──────────────────────────────────
@@ -73,8 +77,11 @@ export class BlogController {
   @Patch(':id/publish')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Toggle blog post published status' })
-  async togglePublished(@Param('id') id: string) {
-    return { data: await this.blogService.togglePublished(id) };
+  async togglePublished(
+    @Param('id') id: string,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.blogService.togglePublished(id, user.id) };
   }
 
   // ── PATCH /api/blog/:id — admin ───────────────────────────────────────────
@@ -82,8 +89,12 @@ export class BlogController {
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Update a blog post by ID' })
-  async update(@Param('id') id: string, @Body() dto: UpdateBlogPostDto) {
-    return { data: await this.blogService.update(id, dto) };
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateBlogPostDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.blogService.update(id, dto, user.id) };
   }
 
   // ── DELETE /api/blog/:id — admin ─────────────────────────────────────────

@@ -11,11 +11,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AdminUser } from '@prisma/client';
 import { ExperienceService } from './experience.service';
 import { CreateExperienceDto } from './dto/create-experience.dto';
 import { UpdateExperienceDto } from './dto/update-experience.dto';
 import { ReorderExperienceDto } from './dto/reorder-experience.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('experience')
 @Controller('experience')
@@ -38,24 +40,34 @@ export class ExperienceController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create an experience entry' })
-  async create(@Body() dto: CreateExperienceDto) {
-    return { data: await this.experienceService.create(dto) };
+  async create(
+    @Body() dto: CreateExperienceDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.experienceService.create(dto, user.id) };
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder experience entries' })
-  async reorder(@Body() dto: ReorderExperienceDto) {
-    return { data: await this.experienceService.reorder(dto) };
+  async reorder(
+    @Body() dto: ReorderExperienceDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.experienceService.reorder(dto, user.id) };
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Update an experience entry by ID' })
-  async update(@Param('id') id: string, @Body() dto: UpdateExperienceDto) {
-    return { data: await this.experienceService.update(id, dto) };
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateExperienceDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.experienceService.update(id, dto, user.id) };
   }
 
   @UseGuards(JwtAuthGuard)

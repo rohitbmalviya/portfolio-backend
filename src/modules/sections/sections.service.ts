@@ -34,7 +34,7 @@ export class SectionsService {
   }
 
   // ── Create ───────────────────────────────────────────────────────────────
-  async create(dto: CreateSectionDto) {
+  async create(dto: CreateSectionDto, userId?: string) {
     // Verify page exists
     const page = await this.prisma.page.findUnique({ where: { id: dto.pageId } });
     if (!page) {
@@ -48,12 +48,13 @@ export class SectionsService {
         order: dto.order ?? 0,
         enabled: dto.enabled ?? true,
         data: (dto.data as object) ?? {},
+        ...(userId ? { createdById: userId } : {}),
       },
     });
   }
 
   // ── Update ───────────────────────────────────────────────────────────────
-  async update(id: string, dto: UpdateSectionDto) {
+  async update(id: string, dto: UpdateSectionDto, userId?: string) {
     await this.findOrThrow(id);
     const { data, ...rest } = dto;
     return this.prisma.section.update({
@@ -61,25 +62,29 @@ export class SectionsService {
       data: {
         ...rest,
         ...(data !== undefined ? { data: data as object } : {}),
+        ...(userId ? { updatedById: userId } : {}),
       },
     });
   }
 
   // ── Toggle enabled ───────────────────────────────────────────────────────
-  async toggleEnabled(id: string) {
+  async toggleEnabled(id: string, userId?: string) {
     const section = await this.findOrThrow(id);
     return this.prisma.section.update({
       where: { id },
-      data: { enabled: !section.enabled },
+      data: {
+        enabled: !section.enabled,
+        ...(userId ? { updatedById: userId } : {}),
+      },
     });
   }
 
   // ── Reorder ──────────────────────────────────────────────────────────────
-  async reorder(dto: ReorderSectionsDto) {
+  async reorder(dto: ReorderSectionsDto, userId?: string) {
     const updates = dto.sections.map((item) =>
       this.prisma.section.update({
         where: { id: item.id },
-        data: { order: item.order },
+        data: { order: item.order, ...(userId ? { updatedById: userId } : {}) },
       }),
     );
     return this.prisma.$transaction(updates);

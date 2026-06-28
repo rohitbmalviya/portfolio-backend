@@ -47,14 +47,6 @@ export class CreateProjectDto {
   @IsOptional()
   liveUrl?: string;
 
-  @ApiPropertyOptional({
-    description: 'JSON array of { url: string, alt: string }',
-    type: 'array',
-  })
-  @IsArray()
-  @IsOptional()
-  screenshots?: Record<string, unknown>[];
-
   @ApiProperty()
   @IsString()
   overview: string;

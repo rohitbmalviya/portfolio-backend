@@ -12,11 +12,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { AdminUser } from '@prisma/client';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ReorderProjectsDto } from './dto/reorder-projects.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('projects')
 @Controller('projects')
@@ -41,7 +43,6 @@ export class ProjectsController {
   }
 
   // ── GET /api/projects/id/:id — admin (look up by primary key) ────────────
-  // Must be declared BEFORE :slug so Express doesn't treat "id" as a slug.
   @UseGuards(JwtAuthGuard)
   @Get('id/:id')
   @ApiBearerAuth()
@@ -70,8 +71,11 @@ export class ProjectsController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create a project' })
-  async create(@Body() dto: CreateProjectDto) {
-    return { data: await this.projectsService.create(dto) };
+  async create(
+    @Body() dto: CreateProjectDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.projectsService.create(dto, user.id) };
   }
 
   // ── PATCH /api/projects/reorder — BEFORE :slug ──────────────────────────
@@ -79,8 +83,11 @@ export class ProjectsController {
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder projects' })
-  async reorder(@Body() dto: ReorderProjectsDto) {
-    return { data: await this.projectsService.reorder(dto) };
+  async reorder(
+    @Body() dto: ReorderProjectsDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.projectsService.reorder(dto, user.id) };
   }
 
   // ── PATCH /api/projects/:id/feature ─────────────────────────────────────
@@ -88,8 +95,11 @@ export class ProjectsController {
   @Patch(':id/feature')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Toggle project featured status' })
-  async toggleFeatured(@Param('id') id: string) {
-    return { data: await this.projectsService.toggleFeatured(id) };
+  async toggleFeatured(
+    @Param('id') id: string,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.projectsService.toggleFeatured(id, user.id) };
   }
 
   // ── PATCH /api/projects/:id/publish ─────────────────────────────────────
@@ -97,8 +107,11 @@ export class ProjectsController {
   @Patch(':id/publish')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Toggle project published status' })
-  async togglePublished(@Param('id') id: string) {
-    return { data: await this.projectsService.togglePublished(id) };
+  async togglePublished(
+    @Param('id') id: string,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.projectsService.togglePublished(id, user.id) };
   }
 
   // ── PATCH /api/projects/:id ──────────────────────────────────────────────
@@ -106,8 +119,12 @@ export class ProjectsController {
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Update a project by ID' })
-  async update(@Param('id') id: string, @Body() dto: UpdateProjectDto) {
-    return { data: await this.projectsService.update(id, dto) };
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProjectDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.projectsService.update(id, dto, user.id) };
   }
 
   // ── DELETE /api/projects/:id — admin ─────────────────────────────────────

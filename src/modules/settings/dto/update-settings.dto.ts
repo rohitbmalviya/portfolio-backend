@@ -4,7 +4,6 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  IsUrl,
 } from 'class-validator';
 import { DefaultTheme } from '@prisma/client';
 
@@ -36,11 +35,6 @@ export class UpdateSettingsDto {
   @IsArray()
   @IsOptional()
   socials?: { type: string; value: string }[];
-
-  @ApiPropertyOptional()
-  @IsUrl()
-  @IsOptional()
-  resumeUrl?: string;
 
   @ApiPropertyOptional({ enum: DefaultTheme })
   @IsEnum(DefaultTheme)

@@ -11,11 +11,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AdminUser } from '@prisma/client';
 import { AchievementsService } from './achievements.service';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
 import { ReorderAchievementsDto } from './dto/reorder-achievements.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('achievements')
 @Controller('achievements')
@@ -38,24 +40,34 @@ export class AchievementsController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create an achievement' })
-  async create(@Body() dto: CreateAchievementDto) {
-    return { data: await this.achievementsService.create(dto) };
+  async create(
+    @Body() dto: CreateAchievementDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.achievementsService.create(dto, user.id) };
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder achievements' })
-  async reorder(@Body() dto: ReorderAchievementsDto) {
-    return { data: await this.achievementsService.reorder(dto) };
+  async reorder(
+    @Body() dto: ReorderAchievementsDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.achievementsService.reorder(dto, user.id) };
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Update an achievement by ID' })
-  async update(@Param('id') id: string, @Body() dto: UpdateAchievementDto) {
-    return { data: await this.achievementsService.update(id, dto) };
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateAchievementDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.achievementsService.update(id, dto, user.id) };
   }
 
   @UseGuards(JwtAuthGuard)

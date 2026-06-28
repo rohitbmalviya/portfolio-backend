@@ -34,11 +34,6 @@ export class CreateExperienceDto {
   @IsOptional()
   endDate?: string | null;
 
-  @ApiPropertyOptional({ description: 'Company logo URL (Cloudinary)' })
-  @IsString()
-  @IsOptional()
-  logo?: string | null;
-
   @ApiPropertyOptional({ type: [String] })
   @IsArray()
   @IsString({ each: true })

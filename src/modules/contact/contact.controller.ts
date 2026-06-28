@@ -11,11 +11,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AdminUser } from '@prisma/client';
 import { ContactService } from './contact.service';
 import { ComposeContactDto } from './dto/compose-contact.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { ReplyContactDto } from './dto/reply-contact.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('contact')
 @Controller('contact')
@@ -24,6 +26,7 @@ export class ContactController {
 
   // ── PUBLIC — contact form submission ─────────────────────────────────────
   // No guard: any visitor can submit the form.
+  // createdById/updatedById remain NULL — visitor action, not admin.
 
   @Post()
   @ApiOperation({ summary: 'Submit a contact form message (public)' })
@@ -50,6 +53,9 @@ export class ContactController {
     return { data: await this.contactService.unreadCount() };
   }
 
+  // syncAll is called from both this endpoint and the cron task.
+  // The cron has no user, so syncAll never accepts a userId — audit columns
+  // remain NULL for all Gmail-synced messages regardless of how sync was triggered.
   @UseGuards(JwtAuthGuard)
   @Post('sync')
   @ApiBearerAuth()
@@ -63,8 +69,11 @@ export class ContactController {
   @Post('compose')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Compose a new outbound email thread to any recipient' })
-  async compose(@Body() dto: ComposeContactDto) {
-    return { data: await this.contactService.compose(dto) };
+  async compose(
+    @Body() dto: ComposeContactDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.contactService.compose(dto, user.id) };
   }
 
   // Declared BEFORE threads/:id so Express does not treat "read-all" as an id.
@@ -72,8 +81,8 @@ export class ContactController {
   @Patch('read-all')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Mark all contact threads as read' })
-  async markAllRead() {
-    return { data: await this.contactService.markAllRead() };
+  async markAllRead(@CurrentUser() user: AdminUser) {
+    return { data: await this.contactService.markAllRead(user.id) };
   }
 
   // ── ADMIN — parameterised routes ─────────────────────────────────────────
@@ -90,16 +99,23 @@ export class ContactController {
   @Patch('threads/:id/read')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Mark a thread as read' })
-  async markRead(@Param('id') id: string) {
-    return { data: await this.contactService.markRead(id) };
+  async markRead(
+    @Param('id') id: string,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.contactService.markRead(id, user.id) };
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('threads/:id/reply')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Send a reply to a contact thread' })
-  async reply(@Param('id') id: string, @Body() dto: ReplyContactDto) {
-    return { data: await this.contactService.reply(id, dto.body) };
+  async reply(
+    @Param('id') id: string,
+    @Body() dto: ReplyContactDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.contactService.reply(id, dto.body, user.id) };
   }
 
   @UseGuards(JwtAuthGuard)

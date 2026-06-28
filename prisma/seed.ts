@@ -49,7 +49,7 @@ async function seedSiteSettings(): Promise<void> {
         github: "https://github.com/rohithumancloud",
         linkedin: "https://linkedin.com/in/rohitbmalviya",
       } satisfies Prisma.InputJsonValue,
-      resumeUrl: "/resume.pdf",
+      // resumeUrl removed — now normalised to resumeMediaId (null by default)
       defaultTheme: "DARK",
       brandAccent: "#22d3ee", // cyan-400
       footerText: "Designed & built by Rohit Malviya — Next.js + Tailwind",
@@ -62,17 +62,17 @@ async function seedSiteSettings(): Promise<void> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  ADMIN USER
+//  ADMIN USER  —  created FIRST; id is threaded into all content seeders
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function seedAdminUser(): Promise<void> {
+async function seedAdminUser(): Promise<string> {
   const email = requireEnv("ADMIN_EMAIL");
   const password = requireEnv("ADMIN_PASSWORD");
   const name = requireEnv("ADMIN_NAME");
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-  await prisma.adminUser.upsert({
+  const admin = await prisma.adminUser.upsert({
     where: { email },
     update: {},
     create: {
@@ -82,13 +82,14 @@ async function seedAdminUser(): Promise<void> {
     },
   });
   console.log(`  ✓ AdminUser (${email})`);
+  return admin.id;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  SKILLS  (step3 §2.3 with proposed tier split)
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function seedSkills(): Promise<void> {
+async function seedSkills(createdById: string): Promise<void> {
   const skills: Array<{
     group: string;
     name: string;
@@ -174,11 +175,12 @@ async function seedSkills(): Promise<void> {
     { group: "AI", name: "LiveKit", level: "PROFICIENT", order: 4 },
   ];
 
-  // Skills have no natural unique key in the schema besides id.
-  // We use deleteMany + createMany for a clean idempotent approach
-  // (skills are low-volume; this is safe).
+  // Skills have no natural unique key besides id.
+  // deleteMany + createMany for clean idempotent reseed (low-volume, safe).
   await prisma.skill.deleteMany({});
-  await prisma.skill.createMany({ data: skills });
+  await prisma.skill.createMany({
+    data: skills.map((s) => ({ ...s, createdById })),
+  });
   console.log(`  ✓ Skills (${skills.length} items)`);
 }
 
@@ -186,8 +188,7 @@ async function seedSkills(): Promise<void> {
 //  EXPERIENCE  (step3 §2.4)
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function seedExperience(): Promise<void> {
-  // Experiences have no unique slug — use deleteMany + createMany for idempotency
+async function seedExperience(createdById: string): Promise<void> {
   await prisma.experience.deleteMany({});
 
   await prisma.experience.createMany({
@@ -206,6 +207,7 @@ async function seedExperience(): Promise<void> {
           "Built Medic AI's 34-route Partner ecosystem + 4 role portals; frontend on Avaloq GBS (Angular 19, MiFID II suitability) with signal-based state, lazy-loaded routes, and reactive forms.",
         ],
         order: 0,
+        createdById,
       },
       {
         role: "Software Developer Intern",
@@ -218,6 +220,7 @@ async function seedExperience(): Promise<void> {
           "Built authentication (JWT/bcrypt/Google OAuth), the Property module, and buyer/seller/agent portals on PropertyBull — a 4-microservice real-estate platform; integrated AWS S3 uploads and wired Docker + Jenkins CI/CD.",
         ],
         order: 1,
+        createdById,
       },
     ],
   });
@@ -228,8 +231,7 @@ async function seedExperience(): Promise<void> {
 //  EDUCATION
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function seedEducation(): Promise<void> {
-  // No unique slug — deleteMany + createMany for idempotency
+async function seedEducation(createdById: string): Promise<void> {
   await prisma.education.deleteMany({});
 
   await prisma.education.createMany({
@@ -241,6 +243,7 @@ async function seedEducation(): Promise<void> {
         endDate: new Date("2024-06-30"),
         detail: "CGPA 8.9 / 10",
         order: 0,
+        createdById,
       },
     ],
   });
@@ -251,7 +254,7 @@ async function seedEducation(): Promise<void> {
 //  ACHIEVEMENTS  (step3 §2.7)
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function seedAchievements(): Promise<void> {
+async function seedAchievements(createdById: string): Promise<void> {
   await prisma.achievement.deleteMany({});
 
   await prisma.achievement.createMany({
@@ -262,6 +265,7 @@ async function seedAchievements(): Promise<void> {
           "Awarded by Humancloud Technologies for delivering critical production features across multiple projects — including the bank-grade SCB Monte Carlo platform, Teamcast, Meet Scribe, and Lease Oasis.",
         date: new Date("2025-03-01"),
         order: 0,
+        createdById,
       },
       {
         title: "Mentored Simulix Interns",
@@ -269,6 +273,7 @@ async function seedAchievements(): Promise<void> {
           "Mentored interns building Simulix — Humancloud's internal Monte Carlo demo platform — sharing domain knowledge on simulation architecture, TensorFlow GBM, and async job queues.",
         date: new Date("2025-06-01"),
         order: 1,
+        createdById,
       },
       {
         title: "B.E. in Artificial Intelligence & Data Science",
@@ -276,6 +281,7 @@ async function seedAchievements(): Promise<void> {
           "Zeal College of Engineering & Research, Pune — CGPA 8.9/10 — 2021–2024.",
         date: new Date("2024-06-30"),
         order: 2,
+        createdById,
       },
     ],
   });
@@ -284,9 +290,10 @@ async function seedAchievements(): Promise<void> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PROJECTS  (step3 §3.1–3.8)
+//  screenshots removed — images are uploaded via Cloudinary after seed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function seedProjects(): Promise<void> {
+async function seedProjects(createdById: string): Promise<void> {
   const projects: Array<{
     slug: string;
     title: string;
@@ -296,7 +303,6 @@ async function seedProjects(): Promise<void> {
     stack: string[];
     metric: string;
     liveUrl?: string;
-    screenshots: Prisma.InputJsonValue;
     overview: string;
     contribution: string;
     body: string;
@@ -333,12 +339,6 @@ async function seedProjects(): Promise<void> {
       ],
       metric: "3 services · ~1,242 tests · Cholesky-GBM engine",
       liveUrl: "https://simulix.humancloud.dev",
-      screenshots: [
-        {
-          url: "/screenshots/scb-monte-carlo.png",
-          alt: "Simulix — Monte Carlo simulation platform",
-        },
-      ],
       overview:
         "A production Monte Carlo platform that ingests the bank's fund/price/FX data over SFTP, syncs it to Oracle, and runs TensorFlow GBM simulations with Cholesky-correlated multi-asset paths — returning 10/50/90-percentile outcome scenarios, achievement dates, and goal probability for goal-based investment advice.",
       contribution:
@@ -379,7 +379,7 @@ The bank's production deployment is on-prem (VPN-only) under NDA. A **public dem
       published: true,
     },
 
-    // ── 2. Aquatech Autotool (client placement, Angular 19 frontend) ─────────
+    // ── 2. Aquatech Autotool ─────────────────────────────────────────────────
     {
       slug: "aquatech-autotool",
       title: "Aquatech Autotool",
@@ -399,7 +399,6 @@ The bank's production deployment is on-prem (VPN-only) under NDA. A **public dem
       ],
       metric:
         "~60% frontend redesign · React-Flow-in-Angular diagram editor · 91 components",
-      screenshots: [],
       overview:
         "An internal tool for water/process-engineering teams: enter a project's feed-water analysis and capacity, and it auto-selects the treatment scheme, computes the water/mass balance, lays out the block/P&ID diagram, builds the bill-of-quantities and costing, and generates the technical-proposal PDF — across desalination, industrial/ultrapure-water, and infrastructure plant types.",
       contribution:
@@ -462,9 +461,6 @@ Angular 19 (standalone) · React 19 / @xyflow React-Flow · Angular Material · 
       ],
       metric: "148 Prisma models · ~185-endpoint backend",
       liveUrl: "https://teamcast.ai",
-      screenshots: [
-        { url: "/screenshots/teamcast.png", alt: "Teamcast dashboard" },
-      ],
       overview:
         "Full hiring-lifecycle platform — job posting → AI candidate matching → 3-stage AI assessment funnel → AI-proctored LiveKit interviews → hire. 148-model multi-tenant Postgres backend; Convex real-time layer for notifications and live interview state.",
       contribution:
@@ -540,9 +536,6 @@ Candidate Portal: application status, assessment submissions, interview scheduli
       ],
       metric: "3 Playwright adapters · 41 billing routes",
       liveUrl: "https://meetscribe.co",
-      screenshots: [
-        { url: "/screenshots/meet-scribe.png", alt: "Meet Scribe dashboard" },
-      ],
       overview:
         "A headless bot silently joins Microsoft Teams, Zoom, and Google Meet; captures audio to GCS; and produces Gemini-diarized transcripts → summaries, MOM emails, and CRM sync — on a Stripe credit/subscription model.",
       contribution:
@@ -624,9 +617,6 @@ Google Cloud Speech returns segments with speaker tags. Gemini is called with th
       metric:
         "7 services · 63 shared entities · 14-page admin + 8-page operator",
       liveUrl: "https://www.leaseoasis.ae",
-      screenshots: [
-        { url: "/screenshots/lease-oasis.png", alt: "Lease Oasis listings" },
-      ],
       overview:
         "Multi-sided property platform for the UAE market — landlords, agencies, agents, and operators — with credit/subscription billing, Elasticsearch-powered search, and a conversational AI assistant backed by a multi-agent LangGraph flow.",
       contribution:
@@ -690,9 +680,6 @@ LangGraph's checkpointing keeps conversation history for follow-up questions.
       ],
       metric: "34-route partner ecosystem · 4 role portals · credit facility",
       liveUrl: "https://www.tanim.ai",
-      screenshots: [
-        { url: "/screenshots/medic-ai.png", alt: "Medic AI portal" },
-      ],
       overview:
         "B2B2C insurance distribution: insurers define products, partners onboard on a credit facility, issuer agents instantly issue policies (PDF certificate + QR verification) with settlement and reporting.",
       contribution:
@@ -746,9 +733,6 @@ A single Express middleware layer reads the JWT \`role\` claim and attaches the 
       ],
       metric: "~69 lazy routes · ~1,845 signal usages · MiFID II suitability",
       liveUrl: "https://demo-gbs.humancloud.ltd",
-      screenshots: [
-        { url: "/screenshots/avaloq-gbs.png", alt: "Avaloq GBS dashboard" },
-      ],
       overview:
         "Wealth-advisory platform — clients set financial goals, complete MiFID II risk-profiling and suitability assessment, get matched to model portfolios, review advisor proposals, and execute orders.",
       contribution:
@@ -803,7 +787,6 @@ The project enforced strict ESLint rules, mandatory code reviews, component size
       ],
       metric: "24 Go REST APIs · 27 Angular components · goroutine batch",
       liveUrl: undefined,
-      screenshots: [],
       overview:
         "Ingests raw biometric punch files and reconstructs attendance records via a custom punch-pairing algorithm; produces muster-roll + daily/monthly reports with Excel export. Deployed to 3 client organisations.",
       contribution:
@@ -880,7 +863,6 @@ internal/
       ],
       metric: "4 microservices · JWT + Google OAuth · S3 uploads",
       liveUrl: "https://app.propertybulls.ai",
-      screenshots: [],
       overview:
         "Real-estate platform connecting buyers, sellers, agents, and service providers — MLS data sync, AI property search, Stripe billing.",
       contribution:
@@ -923,7 +905,7 @@ CRUD for listings with rich metadata (type, bedrooms, bathrooms, amenities, geol
     await prisma.project.upsert({
       where: { slug: project.slug },
       update: {},
-      create: project,
+      create: { ...project, createdById },
     });
   }
   console.log(`  ✓ Projects (${projects.length} items)`);
@@ -931,14 +913,14 @@ CRUD for listings with rich metadata (type, bedrooms, bathrooms, amenities, geol
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  BLOG POSTS  (step3 §4)
+//  coverImage removed — images uploaded via Cloudinary after seed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function seedBlogPosts(): Promise<void> {
+async function seedBlogPosts(createdById: string): Promise<void> {
   const posts: Array<{
     slug: string;
     title: string;
     excerpt: string;
-    coverImage?: string;
     tags: string[];
     body: string;
     readingTime: number;
@@ -952,7 +934,6 @@ async function seedBlogPosts(): Promise<void> {
         "Building a bank-grade Monte Carlo engine: Cholesky-correlated GBM in TensorFlow",
       excerpt:
         "How I designed and built a production Monte Carlo simulation platform for Siam Commercial Bank — covering Cholesky decomposition, correlated GBM paths, TensorFlow vectorisation, FastAPI + ARQ async architecture, and ~1,242 tests.",
-      coverImage: "/placeholder.png",
       tags: [
         "Python",
         "TensorFlow",
@@ -1064,7 +1045,6 @@ The test suite breaks down as:
       title: "Designing a 148-model multi-tenant hiring platform",
       excerpt:
         "How Teamcast's data model handles multi-tenancy, a 3-stage AI assessment funnel, Express as system-of-record alongside Convex for real-time, and BullMQ for background work — at 148 Prisma models.",
-      coverImage: "/placeholder.png",
       tags: [
         "PostgreSQL",
         "Prisma",
@@ -1147,7 +1127,6 @@ Heavy operations run in BullMQ queues on a separate PM2 process:
         "3 Playwright bots that silently join your meetings (Teams / Zoom / Meet)",
       excerpt:
         "The engineering behind Meet Scribe's headless meeting bots — per-platform Playwright automation, PulseAudio/FFmpeg audio capture to GCS, and Gemini speaker diarization — and all the quirks that made it hard.",
-      coverImage: "/placeholder.png",
       tags: [
         "Playwright",
         "Node.js",
@@ -1277,40 +1256,24 @@ Gemini is remarkably good at this — it uses speech patterns, first mentions ("
     await prisma.blogPost.upsert({
       where: { slug: post.slug },
       update: {},
-      create: post,
+      create: {
+        ...post,
+        tags: post.tags ?? [],
+        createdById,
+      },
     });
   }
   console.log(`  ✓ BlogPosts (${posts.length} items)`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  MEDIA  (local /public/screenshots assets — testing only; replaced by
-//  Cloudinary uploads later. cloudinaryUrl holds a local /screenshots path.)
+//  MEDIA  —  starts empty. All images are uploaded via Cloudinary in the app;
+//  no local/dummy assets are seeded.
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function seedMedia(): Promise<void> {
   await prisma.media.deleteMany({});
-
-  // Files currently in portfolio-frontend/public/screenshots/
-  const files = [
-    'teamcast1',
-    'teamcast2',
-    'teamcast3',
-    'teamcast4',
-    'teamcast5',
-    'teamcast6',
-  ];
-
-  await prisma.media.createMany({
-    data: files.map((name, i) => ({
-      cloudinaryUrl: `/screenshots/${name}.png`,
-      publicId: `local/${name}`,
-      alt: `Teamcast screenshot ${i + 1}`,
-      type: 'image/png',
-      category: 'Projects',
-    })),
-  });
-  console.log(`  ✓ Media (${files.length} local screenshots)`);
+  console.log('  ✓ Media (none seeded — upload via Cloudinary)');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1381,7 +1344,7 @@ async function seedConfig(): Promise<void> {
 //  PAGES + SECTIONS  (system pages + Home page sections)
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function seedPages(): Promise<void> {
+async function seedPages(createdById: string): Promise<void> {
   // ── System pages ──────────────────────────────────────────────────────────
 
   const systemPages: Array<{
@@ -1448,14 +1411,13 @@ async function seedPages(): Promise<void> {
   for (const pageData of systemPages) {
     await prisma.page.upsert({
       where: { slug: pageData.slug },
-      // update applies nav defaults on every re-seed so existing rows stay in sync
       update: {
         navLabel: pageData.navLabel,
         navOrder: pageData.navOrder,
         showInNav: pageData.showInNav,
         published: pageData.published,
       },
-      create: pageData,
+      create: { ...pageData, createdById },
     });
   }
   console.log(`  ✓ Pages (${systemPages.length} system pages)`);
@@ -1466,8 +1428,6 @@ async function seedPages(): Promise<void> {
     where: { slug: "home" },
   });
 
-  // Section data shapes per step4 §3.2
-  // We only create sections if none exist yet (idempotency for sections).
   const existingSectionCount = await prisma.section.count({
     where: { pageId: homePage.id },
   });
@@ -1479,7 +1439,6 @@ async function seedPages(): Promise<void> {
       enabled: boolean;
       data: Prisma.InputJsonValue;
     }> = [
-      // ── HERO ──────────────────────────────────────────────────────────────
       {
         type: "HERO",
         order: 0,
@@ -1492,21 +1451,9 @@ async function seedPages(): Promise<void> {
             "From a bank-grade Monte Carlo engine to multi-tenant SaaS platforms — I ship across TypeScript, Go, Python & Java. 2+ years turning hard problems into shipped products at Humancloud Technologies.",
           buttons: [
             { label: "View Résumé", href: "/resume.pdf", style: "primary" },
-            {
-              label: "GitHub",
-              href: "https://github.com/rohithumancloud",
-              style: "ghost",
-            },
-            {
-              label: "LinkedIn",
-              href: "https://linkedin.com/in/rohitbmalviya",
-              style: "ghost",
-            },
-            {
-              label: "Email",
-              href: "mailto:rohitbmalviya@gmail.com",
-              style: "ghost",
-            },
+            { label: "GitHub", href: "https://github.com/rohithumancloud", style: "ghost" },
+            { label: "LinkedIn", href: "https://linkedin.com/in/rohitbmalviya", style: "ghost" },
+            { label: "Email", href: "mailto:rohitbmalviya@gmail.com", style: "ghost" },
           ],
           metrics: [
             { value: "8", label: "production platforms" },
@@ -1516,8 +1463,6 @@ async function seedPages(): Promise<void> {
           ],
         } satisfies Prisma.InputJsonValue,
       },
-
-      // ── ABOUT ─────────────────────────────────────────────────────────────
       {
         type: "ABOUT",
         order: 1,
@@ -1531,64 +1476,36 @@ async function seedPages(): Promise<void> {
           ],
         } satisfies Prisma.InputJsonValue,
       },
-
-      // ── SKILLS ────────────────────────────────────────────────────────────
       {
         type: "SKILLS",
         order: 2,
         enabled: true,
-        data: {
-          heading: "02 — skills",
-          source: "skills-table",
-        } satisfies Prisma.InputJsonValue,
+        data: { heading: "02 — skills", source: "skills-table" } satisfies Prisma.InputJsonValue,
       },
-
-      // ── EXPERIENCE ────────────────────────────────────────────────────────
       {
         type: "EXPERIENCE",
         order: 3,
         enabled: true,
-        data: {
-          heading: "03 — experience",
-          source: "experience-table",
-        } satisfies Prisma.InputJsonValue,
+        data: { heading: "03 — experience", source: "experience-table" } satisfies Prisma.InputJsonValue,
       },
-
-      // ── FEATURED_PROJECTS ─────────────────────────────────────────────────
       {
         type: "FEATURED_PROJECTS",
         order: 4,
         enabled: true,
-        data: {
-          heading: "04 — featured work",
-          auto: "featured",
-          limit: 4,
-        } satisfies Prisma.InputJsonValue,
+        data: { heading: "04 — featured work", auto: "featured", limit: 4 } satisfies Prisma.InputJsonValue,
       },
-
-      // ── BLOG_TEASER ───────────────────────────────────────────────────────
       {
         type: "BLOG_TEASER",
         order: 6,
         enabled: true,
-        data: {
-          heading: "06 — from the blog",
-          limit: 3,
-        } satisfies Prisma.InputJsonValue,
+        data: { heading: "06 — from the blog", limit: 3 } satisfies Prisma.InputJsonValue,
       },
-
-      // ── ACHIEVEMENTS ──────────────────────────────────────────────────────
       {
         type: "ACHIEVEMENTS",
         order: 7,
         enabled: true,
-        data: {
-          heading: "07 — recognition",
-          source: "achievements-table",
-        } satisfies Prisma.InputJsonValue,
+        data: { heading: "07 — recognition", source: "achievements-table" } satisfies Prisma.InputJsonValue,
       },
-
-      // ── EDUCATION ─────────────────────────────────────────────────────────
       {
         type: "EDUCATION",
         order: 8,
@@ -1605,23 +1522,20 @@ async function seedPages(): Promise<void> {
           ],
         } satisfies Prisma.InputJsonValue,
       },
-
-      // ── CONTACT ───────────────────────────────────────────────────────────
       {
         type: "CONTACT",
         order: 9,
         enabled: true,
         data: {
           heading: "Let's build something.",
-          blurb:
-            "Open to senior full-stack / backend / fintech roles. The fastest way to reach me is email — I reply quickly.",
+          blurb: "Open to senior full-stack / backend / fintech roles. The fastest way to reach me is email — I reply quickly.",
           showForm: false,
           email: "rohitbmalviya@gmail.com",
           socials: {
             github: "https://github.com/rohithumancloud",
             linkedin: "https://linkedin.com/in/rohitbmalviya",
           },
-          resumeUrl: "/resume.pdf",
+          resumeUrl: "",
         } satisfies Prisma.InputJsonValue,
       },
     ];
@@ -1630,7 +1544,7 @@ async function seedPages(): Promise<void> {
       await prisma.section.create({
         data: {
           pageId: homePage.id,
-          type: section.type as any,
+          type: section.type as never,
           order: section.order,
           enabled: section.enabled,
           data: section.data,
@@ -1650,17 +1564,22 @@ async function seedPages(): Promise<void> {
 async function main(): Promise<void> {
   console.log("\nSeeding database...\n");
 
+  // Settings has no author — seed independently
   await seedSiteSettings();
-  await seedAdminUser();
-  await seedSkills();
-  await seedExperience();
-  await seedEducation();
-  await seedAchievements();
-  await seedProjects();
-  await seedBlogPosts();
+
+  // AdminUser MUST be created first — its id is threaded into every content model
+  const adminId = await seedAdminUser();
+
+  await seedSkills(adminId);
+  await seedExperience(adminId);
+  await seedEducation(adminId);
+  await seedAchievements(adminId);
+  await seedProjects(adminId);
+  await seedBlogPosts(adminId);
   await seedMedia();
   await seedConfig();
-  await seedPages();
+  await seedPages(adminId);
+  // Note: updatedById intentionally left null on all seeded rows — freshly created.
 
   console.log("\nSeed complete.\n");
 }

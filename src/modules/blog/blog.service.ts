@@ -3,15 +3,44 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { BlogPost, Media } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
+
+// ── Response shape helper ─────────────────────────────────────────────────────
+// Identical output keys to the previous include-based approach.
+function mapBlogPost(post: BlogPost, media: Media[]) {
+  const mappedImages = media.map((m) => ({
+    mediaId: m.id,
+    url: m.cloudinaryUrl,
+    alt: m.alt,
+  }));
+  return {
+    ...post,
+    images: mappedImages,
+    // First image acts as the cover for list cards
+    coverImage: mappedImages[0]?.url ?? null,
+  };
+}
+
+// ── Batch-group media by ownerId (avoids N+1 in list reads) ──────────────────
+function groupByOwnerId(media: Media[]): Map<string, Media[]> {
+  const map = new Map<string, Media[]>();
+  for (const m of media) {
+    if (!m.ownerId) continue;
+    const list = map.get(m.ownerId) ?? [];
+    list.push(m);
+    map.set(m.ownerId, list);
+  }
+  return map;
+}
 
 @Injectable()
 export class BlogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async findOrThrow(id: string) {
+  private async findOrThrow(id: string): Promise<BlogPost> {
     const post = await this.prisma.blogPost.findUnique({ where: { id } });
     if (!post) {
       throw new NotFoundException(`Blog post "${id}" not found.`);
@@ -20,29 +49,36 @@ export class BlogService {
   }
 
   // ── Public: list published posts, newest first ────────────────────────
-  findAllPublic() {
-    return this.prisma.blogPost.findMany({
+  async findAllPublic() {
+    const posts = await this.prisma.blogPost.findMany({
       where: { published: true },
       orderBy: { publishedAt: 'desc' },
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        excerpt: true,
-        coverImage: true,
-        tags: true,
-        readingTime: true,
-        published: true,
-        publishedAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
     });
+
+    if (posts.length === 0) return [];
+
+    // Batch media fetch — one query for all posts
+    const ids = posts.map((p) => p.id);
+    const allMedia = await this.prisma.media.findMany({
+      where: { ownerType: 'blog', ownerId: { in: ids } },
+      orderBy: { order: 'asc' },
+    });
+    const mediaByOwner = groupByOwnerId(allMedia);
+
+    return posts.map((p) => mapBlogPost(p, mediaByOwner.get(p.id) ?? []));
   }
 
   // ── Admin: single post by ID (any status) ─────────────────────────────
-  findById(id: string) {
-    return this.findOrThrow(id);
+  async findById(id: string) {
+    const post = await this.prisma.blogPost.findUnique({ where: { id } });
+    if (!post) {
+      throw new NotFoundException(`Blog post "${id}" not found.`);
+    }
+    const media = await this.prisma.media.findMany({
+      where: { ownerType: 'blog', ownerId: id },
+      orderBy: { order: 'asc' },
+    });
+    return mapBlogPost(post, media);
   }
 
   // ── Admin: list all posts (trimmed to the fields the list UI needs) ────
@@ -69,7 +105,11 @@ export class BlogService {
     if (!post) {
       throw new NotFoundException(`Blog post "${slug}" not found.`);
     }
-    return post;
+    const media = await this.prisma.media.findMany({
+      where: { ownerType: 'blog', ownerId: post.id },
+      orderBy: { order: 'asc' },
+    });
+    return mapBlogPost(post, media);
   }
 
   // ── Admin: single post by slug ───────────────────────────────────────
@@ -78,30 +118,42 @@ export class BlogService {
     if (!post) {
       throw new NotFoundException(`Blog post "${slug}" not found.`);
     }
-    return post;
+    const media = await this.prisma.media.findMany({
+      where: { ownerType: 'blog', ownerId: post.id },
+      orderBy: { order: 'asc' },
+    });
+    return mapBlogPost(post, media);
   }
 
   // ── Create ───────────────────────────────────────────────────────────
-  async create(dto: CreateBlogPostDto) {
+  async create(dto: CreateBlogPostDto, userId: string) {
     const existing = await this.prisma.blogPost.findUnique({ where: { slug: dto.slug } });
     if (existing) {
       throw new ConflictException(`A blog post with slug "${dto.slug}" already exists.`);
     }
-    return this.prisma.blogPost.create({
+
+    const { publishedAt, ...rest } = dto;
+
+    const post = await this.prisma.blogPost.create({
       data: {
-        ...dto,
-        tags: dto.tags ?? [],
-        publishedAt: dto.published && dto.publishedAt
-          ? new Date(dto.publishedAt)
-          : dto.published
-          ? new Date()
-          : null,
+        ...rest,
+        tags: rest.tags ?? [],
+        createdById: userId,
+        publishedAt:
+          rest.published && publishedAt
+            ? new Date(publishedAt)
+            : rest.published
+            ? new Date()
+            : null,
       },
     });
+
+    // Newly created — no media linked yet (deferred-upload flow)
+    return mapBlogPost(post, []);
   }
 
   // ── Update ───────────────────────────────────────────────────────────
-  async update(id: string, dto: UpdateBlogPostDto) {
+  async update(id: string, dto: UpdateBlogPostDto, userId?: string) {
     const existing = await this.findOrThrow(id);
 
     if (dto.slug && dto.slug !== existing.slug) {
@@ -114,26 +166,39 @@ export class BlogService {
     }
 
     const { publishedAt, ...rest } = dto;
-    return this.prisma.blogPost.update({
+
+    const post = await this.prisma.blogPost.update({
       where: { id },
       data: {
         ...rest,
         ...(publishedAt !== undefined ? { publishedAt: new Date(publishedAt) } : {}),
+        ...(userId ? { updatedById: userId } : {}),
       },
     });
+
+    const media = await this.prisma.media.findMany({
+      where: { ownerType: 'blog', ownerId: id },
+      orderBy: { order: 'asc' },
+    });
+    return mapBlogPost(post, media);
   }
 
   // ── Publish toggle ────────────────────────────────────────────────────
-  async togglePublished(id: string) {
+  async togglePublished(id: string, userId?: string) {
     const post = await this.findOrThrow(id);
-    return this.prisma.blogPost.update({
+    const updated = await this.prisma.blogPost.update({
       where: { id },
       data: {
         published: !post.published,
-        // Set publishedAt when publishing for the first time
         publishedAt: !post.published && !post.publishedAt ? new Date() : post.publishedAt,
+        ...(userId ? { updatedById: userId } : {}),
       },
     });
+    const media = await this.prisma.media.findMany({
+      where: { ownerType: 'blog', ownerId: id },
+      orderBy: { order: 'asc' },
+    });
+    return mapBlogPost(updated, media);
   }
 
   // ── Delete ────────────────────────────────────────────────────────────

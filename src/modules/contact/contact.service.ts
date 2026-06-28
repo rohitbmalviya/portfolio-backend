@@ -119,6 +119,9 @@ export class ContactService {
   /**
    * Called by the public contact form. Always saves the message; Gmail send is
    * best-effort — a failure never prevents the save.
+   *
+   * createdById/updatedById intentionally left NULL — this is a visitor action,
+   * not an admin action.
    */
   async createFromWeb(dto: CreateContactDto): Promise<{ success: true }> {
     const { name, email, subject, message } = dto;
@@ -135,8 +138,10 @@ export class ContactService {
             direction: ContactDirection.Inbound,
             source: ContactSource.Web,
             body: message,
+            // createdById: null — inbound visitor message
           },
         },
+        // createdById: null — visitor-originated thread
       },
     });
 
@@ -160,6 +165,7 @@ export class ContactService {
           });
 
           // Record the outgoing notification message for deduplication during sync
+          // createdById: null — system-originated notification, not a direct admin action
           await this.prisma.contactMessage.create({
             data: {
               threadId: thread.id,
@@ -255,13 +261,21 @@ export class ContactService {
     return thread;
   }
 
-  /** Mark a thread as read (unread = false) and, if linked to Gmail, remove the UNREAD label there too. */
-  async markRead(id: string) {
+  /**
+   * Mark a thread as read (unread = false) and, if linked to Gmail, remove the
+   * UNREAD label there too.
+   *
+   * userId — admin id from the guarded controller; sets updatedById on the thread.
+   */
+  async markRead(id: string, userId?: string) {
     const thread = await this.findOrThrow(id);
 
     const updated = await this.prisma.contactThread.update({
       where: { id },
-      data: { unread: false },
+      data: {
+        unread: false,
+        ...(userId ? { updatedById: userId } : {}),
+      },
     });
 
     // Best-effort: mirror the read state into Gmail so the inbox stays clean
@@ -285,28 +299,37 @@ export class ContactService {
    * Compose a brand-new outbound email from the admin to any recipient.
    *
    * 1. Creates a ContactThread (email=to, name=name||to, subject, unread=false).
-   * 2. Inserts an outbound ContactMessage (direction='outbound', source='app').
+   *    updatedById is set to the admin userId (admin is performing this action).
+   * 2. Inserts an outbound ContactMessage with createdById=userId (admin authored it).
    * 3. Builds the branded signature from SiteSettings (same helper as reply).
    * 4. If Gmail is configured, sends via sendCompose and stores the Gmail IDs.
    *    A send failure is logged but never prevents the thread from being saved.
    * 5. Returns the thread with all messages — same shape as getThread.
+   *
+   * userId — admin id from the guarded controller.
    */
-  async compose(dto: { to: string; name?: string; subject?: string; body: string }) {
+  async compose(
+    dto: { to: string; name?: string; subject?: string; body: string },
+    userId?: string,
+  ) {
     const { to, name, subject, body } = dto;
     const threadName = name?.trim() || to;
 
-    // 1 + 2. Persist thread and initial outbound message in one round-trip
+    // 1 + 2. Persist thread and initial outbound message in one round-trip.
+    // updatedById set on thread (admin action); createdById set on the message.
     const thread = await this.prisma.contactThread.create({
       data: {
         email: to,
         name: threadName,
         subject: subject || null,
         unread: false,
+        ...(userId ? { updatedById: userId } : {}),
         messages: {
           create: {
             direction: ContactDirection.Outbound,
             source: ContactSource.App,
             body,
+            ...(userId ? { createdById: userId } : {}),
           },
         },
       },
@@ -326,7 +349,11 @@ export class ContactService {
         if (sent.id && sent.threadId) {
           await this.prisma.contactThread.update({
             where: { id: thread.id },
-            data: { gmailThreadId: sent.threadId, lastMessageAt: new Date() },
+            data: {
+              gmailThreadId: sent.threadId,
+              lastMessageAt: new Date(),
+              ...(userId ? { updatedById: userId } : {}),
+            },
           });
 
           await this.prisma.contactMessage.update({
@@ -355,8 +382,10 @@ export class ContactService {
    * Mark ALL threads as read and, for each one linked to a Gmail thread, best-effort
    * remove the UNREAD label in Gmail.  A single Gmail failure never aborts the rest.
    * Returns { updated } — count of rows that were actually changed.
+   *
+   * userId — admin id from the guarded controller; sets updatedById on all affected threads.
    */
-  async markAllRead(): Promise<{ updated: number }> {
+  async markAllRead(userId?: string): Promise<{ updated: number }> {
     // Capture Gmail-linked unread threads BEFORE the bulk update so we know which to sync
     const threadsWithGmail = await this.prisma.contactThread.findMany({
       where: { unread: true, gmailThreadId: { not: null } },
@@ -365,7 +394,10 @@ export class ContactService {
 
     const result = await this.prisma.contactThread.updateMany({
       where: { unread: true },
-      data: { unread: false },
+      data: {
+        unread: false,
+        ...(userId ? { updatedById: userId } : {}),
+      },
     });
 
     // Best-effort: mirror read state into Gmail for each linked thread
@@ -388,11 +420,14 @@ export class ContactService {
    *
    * 1. Loads the singleton SiteSettings row to build a branded email signature.
    *    Falls back gracefully if the row doesn't exist or the query fails.
-   * 2. Inserts a ContactMessage immediately; Gmail send is best-effort.
-   * 3. If Gmail is configured, the reply is sent to the visitor with the branded
+   * 2. Inserts a ContactMessage with createdById=userId (admin authored it).
+   * 3. Bumps thread.updatedById=userId (admin action touched this thread).
+   * 4. If Gmail is configured, the reply is sent to the visitor with the branded
    *    HTML template and linked to the existing Gmail thread via threadId.
+   *
+   * userId — admin id from the guarded controller.
    */
-  async reply(id: string, body: string) {
+  async reply(id: string, body: string, userId?: string) {
     const thread = await this.findOrThrow(id);
 
     // ── Build email signature from SiteSettings (with full fallback) ─────────
@@ -414,6 +449,7 @@ export class ContactService {
     }
 
     // ── Persist the reply message (with gmailMessageId when available) ────────
+    // createdById = userId — admin authored this outbound message
     const message = await this.prisma.contactMessage.create({
       data: {
         threadId: thread.id,
@@ -421,13 +457,18 @@ export class ContactService {
         source: ContactSource.App,
         body,
         gmailMessageId,
+        ...(userId ? { createdById: userId } : {}),
       },
     });
 
-    // Bump thread activity + mark read
+    // Bump thread activity + mark read + set updatedById (admin action)
     await this.prisma.contactThread.update({
       where: { id: thread.id },
-      data: { lastMessageAt: new Date(), unread: false },
+      data: {
+        lastMessageAt: new Date(),
+        unread: false,
+        ...(userId ? { updatedById: userId } : {}),
+      },
     });
 
     return message;
@@ -457,6 +498,9 @@ export class ContactService {
    * Called automatically by the cron task every 2 minutes and manually via
    * POST /api/contact/sync. Safe to call concurrently — each thread is
    * processed independently; one failure does not abort the rest.
+   *
+   * No userId param — this is a system/cron operation; createdById/updatedById
+   * remain NULL for all rows created or touched by this method.
    */
   async syncAll(): Promise<{ synced: number; errors: number }> {
     if (!this.gmail.isConfigured()) {
@@ -493,6 +537,7 @@ export class ContactService {
           const isFromAdmin = msg.fromEmail.toLowerCase() === gmailUser;
           const direction = isFromAdmin ? ContactDirection.Outbound : ContactDirection.Inbound;
 
+          // createdById intentionally null — Gmail-synced messages are not direct admin actions
           await this.prisma.contactMessage.create({
             data: {
               threadId: thread.id,
@@ -515,7 +560,8 @@ export class ContactService {
           }
         }
 
-        // Update thread metadata once per thread instead of per message
+        // Update thread metadata once per thread instead of per message.
+        // updatedById intentionally null — cron-driven, no admin user.
         if (latestDate !== null) {
           await this.prisma.contactThread.update({
             where: { id: thread.id },

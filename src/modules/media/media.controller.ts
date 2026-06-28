@@ -21,9 +21,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
+import { AdminUser } from '@prisma/client';
 import { MediaService } from './media.service';
 import { CreateMediaDto, UpdateMediaDto } from './dto/create-media.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { MAX_FILE_SIZE_BYTES } from './media.constants';
 
 @ApiTags('media')
@@ -56,9 +58,25 @@ export class MediaController {
           format: 'binary',
           description: 'Image file (JPEG, PNG, WebP, GIF, SVG — max 10 MB)',
         },
-        alt: {
+        alt: { type: 'string', description: 'Optional alt text' },
+        category: { type: 'string', description: 'Library bucket: "projects", "blogs", or "raw"' },
+        entitySlug: { type: 'string', description: 'Entity slug — required for projects/blogs category' },
+        sequence: { type: 'integer', description: 'Image sequence within the entity (1-based)' },
+        ownerId: {
           type: 'string',
-          description: 'Optional alt text',
+          description: 'ID of the owning entity — links the asset at upload time (deferred-upload flow)',
+        },
+        ownerType: {
+          type: 'string',
+          description: "Owner type: 'project' | 'blog' | 'experience' | 'education' | 'achievement' | 'page' | 'settings'",
+        },
+        usage: {
+          type: 'string',
+          description: "Usage discriminator for multi-purpose owners, e.g. 'resume' or 'og'",
+        },
+        order: {
+          type: 'integer',
+          description: 'Display order within the owning collection (0-based)',
         },
       },
     },
@@ -75,17 +93,22 @@ export class MediaController {
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateMediaDto,
+    @CurrentUser() user: AdminUser,
   ) {
-    return { data: await this.mediaService.uploadFile(file, dto) };
+    return { data: await this.mediaService.uploadFile(file, dto, user.id) };
   }
 
-  // ── PATCH /api/media/:id — admin (update category / alt) ─────────────────
+  // ── PATCH /api/media/:id — admin ─────────────────────────────────────────
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '[Admin] Update a media asset’s category or alt text' })
-  async update(@Param('id') id: string, @Body() dto: UpdateMediaDto) {
-    return { data: await this.mediaService.update(id, dto) };
+  @ApiOperation({ summary: '[Admin] Update a media asset — reorder (order), alt text, usage, or category' })
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateMediaDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.mediaService.update(id, dto, user.id) };
   }
 
   // ── DELETE /api/media/:id — admin ────────────────────────────────────────

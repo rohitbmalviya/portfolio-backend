@@ -3,59 +3,100 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Media, Page, Prisma, Section } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
+
+// ── Response shape helpers ────────────────────────────────────────────────────
+// Returns the SAME keys as before: `ogImage` (URL) and `ogImageMediaId` (id).
+
+function mapPage(page: Page, media: Media[]) {
+  const ogMedia = media[0] ?? null;
+  return {
+    ...page,
+    ogImage: ogMedia?.cloudinaryUrl ?? null,
+    ogImageMediaId: ogMedia?.id ?? null,
+  };
+}
+
+function mapPageWithSections(
+  page: Page & { sections: Section[] },
+  media: Media[],
+) {
+  const ogMedia = media[0] ?? null;
+  return {
+    ...page,
+    ogImage: ogMedia?.cloudinaryUrl ?? null,
+    ogImageMediaId: ogMedia?.id ?? null,
+  };
+}
+
+// ── Batch-group media by ownerId (avoids N+1 in list reads) ──────────────────
+function groupByOwnerId(media: Media[]): Map<string, Media[]> {
+  const map = new Map<string, Media[]>();
+  for (const m of media) {
+    if (!m.ownerId) continue;
+    const list = map.get(m.ownerId) ?? [];
+    list.push(m);
+    map.set(m.ownerId, list);
+  }
+  return map;
+}
 
 @Injectable()
 export class PagesService {
   constructor(private readonly prisma: PrismaService) {}
 
   // ── Public: list all published pages (no sections — lightweight) ─────────
-  findAllPublic() {
-    return this.prisma.page.findMany({
+  async findAllPublic() {
+    const pages = await this.prisma.page.findMany({
       where: { published: true },
       orderBy: { navOrder: 'asc' },
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        metaTitle: true,
-        metaDescription: true,
-        ogImage: true,
-        navLabel: true,
-        navOrder: true,
-        showInNav: true,
-        published: true,
-        isSystem: true,
-        createdAt: true,
-        updatedAt: true,
-      },
     });
+
+    if (pages.length === 0) return [];
+
+    const ids = pages.map((p) => p.id);
+    const allMedia = await this.prisma.media.findMany({
+      where: { ownerType: 'page', ownerId: { in: ids } },
+      orderBy: { order: 'asc' },
+    });
+    const mediaByOwner = groupByOwnerId(allMedia);
+
+    return pages.map((p) => mapPage(p, mediaByOwner.get(p.id) ?? []));
   }
 
-  // ── Admin: list ALL pages (lightweight — fields + section count, no section bodies) ─
-  findAllAdmin() {
-    return this.prisma.page.findMany({
+  // ── Admin: list ALL pages (lightweight — section count, no section bodies) ─
+  async findAllAdmin() {
+    const pages = await this.prisma.page.findMany({
       orderBy: { navOrder: 'asc' },
-      select: {
-        id: true,
-        slug: true,
-        title: true,
-        published: true,
-        isSystem: true,
-        showInNav: true,
-        navOrder: true,
-        navLabel: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
         _count: { select: { sections: true } },
       },
     });
+
+    if (pages.length === 0) return [];
+
+    const ids = pages.map((p) => p.id);
+    const allMedia = await this.prisma.media.findMany({
+      where: { ownerType: 'page', ownerId: { in: ids } },
+      orderBy: { order: 'asc' },
+    });
+    const mediaByOwner = groupByOwnerId(allMedia);
+
+    return pages.map((page) => {
+      const media = mediaByOwner.get(page.id) ?? [];
+      const ogMedia = media[0] ?? null;
+      return {
+        ...page,
+        ogImage: ogMedia?.cloudinaryUrl ?? null,
+        ogImageMediaId: ogMedia?.id ?? null,
+      };
+    });
   }
 
-  // ── Public: navigation items (showInNav=true, published=true, ordered by navOrder) ─
+  // ── Public: navigation items (showInNav=true, published=true) ────────────
   findNav() {
     return this.prisma.page.findMany({
       where: { showInNav: true, published: true },
@@ -83,7 +124,11 @@ export class PagesService {
     if (!page) {
       throw new NotFoundException(`Page "${slug}" not found.`);
     }
-    return page;
+    const media = await this.prisma.media.findMany({
+      where: { ownerType: 'page', ownerId: page.id },
+      orderBy: { order: 'asc' },
+    });
+    return mapPageWithSections(page, media);
   }
 
   // ── Admin: single page with ALL sections (incl. disabled) ───────────────
@@ -99,7 +144,11 @@ export class PagesService {
     if (!page) {
       throw new NotFoundException(`Page "${slug}" not found.`);
     }
-    return page;
+    const media = await this.prisma.media.findMany({
+      where: { ownerType: 'page', ownerId: page.id },
+      orderBy: { order: 'asc' },
+    });
+    return mapPageWithSections(page, media);
   }
 
   async findById(id: string) {
@@ -107,7 +156,11 @@ export class PagesService {
     if (!page) {
       throw new NotFoundException(`Page "${id}" not found.`);
     }
-    return page;
+    const media = await this.prisma.media.findMany({
+      where: { ownerType: 'page', ownerId: id },
+      orderBy: { order: 'asc' },
+    });
+    return mapPage(page, media);
   }
 
   // ── Admin: single page by ID with ALL sections ───────────────────────────
@@ -123,26 +176,42 @@ export class PagesService {
     if (!page) {
       throw new NotFoundException(`Page "${id}" not found.`);
     }
-    return page;
+    const media = await this.prisma.media.findMany({
+      where: { ownerType: 'page', ownerId: id },
+      orderBy: { order: 'asc' },
+    });
+    return mapPageWithSections(page, media);
   }
 
   // ── Create ───────────────────────────────────────────────────────────────
-  async create(dto: CreatePageDto) {
+  async create(dto: CreatePageDto, userId: string) {
     try {
-      return await this.prisma.page.create({
-        data: { ...dto },
+      const page = await this.prisma.page.create({
+        data: { ...dto, createdById: userId },
       });
+      // Newly created — no media linked yet (deferred-upload flow)
+      return mapPage(page, []);
     } catch (error) {
       this.handleUniqueViolation(error);
     }
   }
 
   // ── Update ───────────────────────────────────────────────────────────────
-  async update(id: string, dto: UpdatePageDto) {
+  async update(id: string, dto: UpdatePageDto, userId?: string) {
     await this.findById(id);
-
+    // UpdatePageDto has a legacy `ogImage` URL-only field (never mapped to a column).
+    // Strip it so TypeScript is satisfied with the Prisma update input type.
+    const { ogImage: _ogImage, ...pageData } = dto;
     try {
-      return await this.prisma.page.update({ where: { id }, data: dto });
+      const page = await this.prisma.page.update({
+        where: { id },
+        data: { ...pageData, ...(userId ? { updatedById: userId } : {}) },
+      });
+      const media = await this.prisma.media.findMany({
+        where: { ownerType: 'page', ownerId: id },
+        orderBy: { order: 'asc' },
+      });
+      return mapPage(page, media);
     } catch (error) {
       this.handleUniqueViolation(error);
     }

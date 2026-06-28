@@ -29,11 +29,6 @@ export class CreatePageDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  ogImage?: string;
-
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
   navLabel?: string;
 
   @ApiPropertyOptional({ default: 0 })

@@ -19,11 +19,6 @@ export class CreateAchievementDto {
   @IsOptional()
   date?: string | null;
 
-  @ApiPropertyOptional({ description: 'Optional photo URL (Cloudinary)' })
-  @IsString()
-  @IsOptional()
-  image?: string | null;
-
   @ApiPropertyOptional({ default: 0 })
   @IsInt()
   @Min(0)

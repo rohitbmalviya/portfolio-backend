@@ -34,7 +34,6 @@ export class SkillsService {
       : [];
 
     if (configItems.length > 0) {
-      // Config-driven: use seeded order + labels, omit empty groups.
       return configItems
         .map(({ value: group, label }) => ({
           group,
@@ -57,20 +56,23 @@ export class SkillsService {
     return this.findOrThrow(id);
   }
 
-  async create(dto: CreateSkillDto) {
-    return this.prisma.skill.create({ data: dto });
+  async create(dto: CreateSkillDto, userId: string) {
+    return this.prisma.skill.create({ data: { ...dto, createdById: userId } });
   }
 
-  async update(id: string, dto: UpdateSkillDto) {
+  async update(id: string, dto: UpdateSkillDto, userId?: string) {
     await this.findOrThrow(id);
-    return this.prisma.skill.update({ where: { id }, data: dto });
+    return this.prisma.skill.update({
+      where: { id },
+      data: { ...dto, ...(userId ? { updatedById: userId } : {}) },
+    });
   }
 
-  async reorder(dto: ReorderSkillsDto) {
+  async reorder(dto: ReorderSkillsDto, userId?: string) {
     const updates = dto.skills.map((item) =>
       this.prisma.skill.update({
         where: { id: item.id },
-        data: { order: item.order },
+        data: { order: item.order, ...(userId ? { updatedById: userId } : {}) },
       }),
     );
     return this.prisma.$transaction(updates);

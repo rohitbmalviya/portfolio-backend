@@ -26,17 +26,19 @@ export class ConfigService {
   }
 
   // Upsert items (and optional label) for a key.
-  update(key: string, dto: UpdateConfigDto) {
+  update(key: string, dto: UpdateConfigDto, userId?: string) {
     return this.prisma.configuration.upsert({
       where: { key },
       update: {
         items: dto.items as unknown as Prisma.InputJsonValue,
         ...(dto.label !== undefined ? { label: dto.label } : {}),
+        ...(userId ? { updatedById: userId } : {}),
       },
       create: {
         key,
         label: dto.label ?? key,
         items: dto.items as unknown as Prisma.InputJsonValue,
+        ...(userId ? { createdById: userId } : {}),
       },
     });
   }

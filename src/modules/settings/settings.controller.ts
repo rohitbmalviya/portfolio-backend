@@ -6,9 +6,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AdminUser } from '@prisma/client';
 import { SettingsService } from './settings.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('settings')
 @Controller('settings')
@@ -27,7 +29,10 @@ export class SettingsController {
   @Patch()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Upsert site settings (singleton)' })
-  async upsertSettings(@Body() dto: UpdateSettingsDto) {
-    return { data: await this.settingsService.upsertSettings(dto) };
+  async upsertSettings(
+    @Body() dto: UpdateSettingsDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.settingsService.upsertSettings(dto, user.id) };
   }
 }

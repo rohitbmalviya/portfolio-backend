@@ -12,11 +12,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { AdminUser } from '@prisma/client';
 import { SectionsService } from './sections.service';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { ReorderSectionsDto } from './dto/reorder-sections.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('sections')
 @Controller('sections')
@@ -47,8 +49,11 @@ export class SectionsController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create a section on a page' })
-  async create(@Body() dto: CreateSectionDto) {
-    return { data: await this.sectionsService.create(dto) };
+  async create(
+    @Body() dto: CreateSectionDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.sectionsService.create(dto, user.id) };
   }
 
   // ── PATCH /api/sections/reorder — BEFORE :id to avoid conflict ──────────
@@ -56,8 +61,11 @@ export class SectionsController {
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder sections (batch update order values)' })
-  async reorder(@Body() dto: ReorderSectionsDto) {
-    return { data: await this.sectionsService.reorder(dto) };
+  async reorder(
+    @Body() dto: ReorderSectionsDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.sectionsService.reorder(dto, user.id) };
   }
 
   // ── PATCH /api/sections/:id/toggle ──────────────────────────────────────
@@ -65,8 +73,11 @@ export class SectionsController {
   @Patch(':id/toggle')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Toggle section enabled/disabled' })
-  async toggleEnabled(@Param('id') id: string) {
-    return { data: await this.sectionsService.toggleEnabled(id) };
+  async toggleEnabled(
+    @Param('id') id: string,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.sectionsService.toggleEnabled(id, user.id) };
   }
 
   // ── PATCH /api/sections/:id ──────────────────────────────────────────────
@@ -74,8 +85,12 @@ export class SectionsController {
   @Patch(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Update a section by ID' })
-  async update(@Param('id') id: string, @Body() dto: UpdateSectionDto) {
-    return { data: await this.sectionsService.update(id, dto) };
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateSectionDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.sectionsService.update(id, dto, user.id) };
   }
 
   // ── DELETE /api/sections/:id — admin ────────────────────────────────────

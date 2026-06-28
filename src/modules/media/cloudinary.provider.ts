@@ -70,8 +70,17 @@ export class CloudinaryProvider implements OnModuleInit {
 
   /**
    * Delete an asset by its publicId.
+   * @alias destroy
    */
   async deleteByPublicId(publicId: string): Promise<void> {
+    await cloudinary.uploader.destroy(publicId);
+  }
+
+  /**
+   * Destroy an asset by its publicId (alias for deleteByPublicId,
+   * consistent with Cloudinary SDK naming).
+   */
+  async destroy(publicId: string): Promise<void> {
     await cloudinary.uploader.destroy(publicId);
   }
 

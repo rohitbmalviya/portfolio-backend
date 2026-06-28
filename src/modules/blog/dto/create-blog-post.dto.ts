@@ -7,7 +7,6 @@ import {
   IsOptional,
   IsPositive,
   IsString,
-  IsUrl,
 } from 'class-validator';
 
 export class CreateBlogPostDto {
@@ -22,11 +21,6 @@ export class CreateBlogPostDto {
   @ApiProperty()
   @IsString()
   excerpt: string;
-
-  @ApiPropertyOptional()
-  @IsUrl()
-  @IsOptional()
-  coverImage?: string;
 
   @ApiPropertyOptional({ type: [String] })
   @IsArray()

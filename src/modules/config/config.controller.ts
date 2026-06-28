@@ -7,9 +7,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AdminUser } from '@prisma/client';
 import { ConfigService } from './config.service';
 import { UpdateConfigDto } from './dto/update-config.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('config')
 @Controller('config')
@@ -42,8 +44,12 @@ export class ConfigController {
   @UseGuards(JwtAuthGuard)
   @Patch(':key')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '[Admin] Update an option set’s items' })
-  async update(@Param('key') key: string, @Body() dto: UpdateConfigDto) {
-    return { data: await this.configService.update(key, dto) };
+  @ApiOperation({ summary: '[Admin] Update an option set\'s items' })
+  async update(
+    @Param('key') key: string,
+    @Body() dto: UpdateConfigDto,
+    @CurrentUser() user: AdminUser,
+  ) {
+    return { data: await this.configService.update(key, dto, user.id) };
   }
 }
