@@ -1,13 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
-  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   Min,
 } from 'class-validator';
-import { PageType } from '@prisma/client';
 
 /**
  * All fields are optional — send only the ones you want to change.
@@ -22,11 +20,6 @@ export class UpdatePageDto {
   @IsString()
   @IsOptional()
   title?: string;
-
-  @ApiPropertyOptional({ enum: PageType })
-  @IsEnum(PageType)
-  @IsOptional()
-  type?: PageType;
 
   @ApiPropertyOptional()
   @IsString()

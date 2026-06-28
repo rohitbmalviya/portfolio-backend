@@ -43,6 +43,7 @@ export const SNIPPET_MAX_LENGTH = 120;
  */
 export const OWNER_DEFAULTS = {
   name: 'Rohit Malviya',
+  role: 'Full-Stack Engineer',
   email: 'rohitbmalviya@gmail.com',
   github: 'https://github.com/rohithumancloud',
   linkedin: 'https://linkedin.com/in/rohitbmalviya',

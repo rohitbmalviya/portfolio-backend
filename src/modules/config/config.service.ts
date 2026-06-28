@@ -1,8 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
-  PageType,
   SectionType,
-  SkillGroup,
   SkillLevel,
   DefaultTheme,
   Prisma,
@@ -44,11 +42,11 @@ export class ConfigService {
   }
 
   // ── Read-only schema enums (code-defined, single source of truth) ────────
+  // SkillGroup was removed as a Prisma enum in favour of a DB-driven
+  // `skill_groups` Configuration row — fetch it via GET /api/config/skill_groups.
   getEnums() {
     return {
-      PageType: Object.values(PageType),
       SectionType: Object.values(SectionType),
-      SkillGroup: Object.values(SkillGroup),
       SkillLevel: Object.values(SkillLevel),
       DefaultTheme: Object.values(DefaultTheme),
     };

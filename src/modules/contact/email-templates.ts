@@ -51,10 +51,10 @@ export interface NotificationEmailParams {
   message: string;
   receivedAt: Date;
   adminUrl: string;
-  /** Admin / portfolio owner display name — shown in the email footer. */
+  /** Admin / portfolio owner display name — used for the monogram chip and footer. */
   adminName?: string;
-  /** Brand accent colour for the monogram chip, e.g. '#22d3ee'. */
-  brandAccent?: string;
+  /** Brand accent colour for the monogram chip, e.g. '#22d3ee'. Always provided by caller. */
+  brandAccent: string;
 }
 
 export interface ReplyEmailParams {
@@ -79,6 +79,20 @@ function esc(value: string): string {
  */
 function displayUrl(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+}
+
+/**
+ * Derive a 1-2 character monogram from a display name.
+ * Takes the first letter of each of the first two words, uppercased.
+ * Falls back to the first two characters of the name when only one word is present.
+ * Examples: "Rohit Malviya" → "RM", "Rohit" → "RO", "" → "".
+ */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
 }
 
 /**
@@ -143,7 +157,7 @@ const REPLY_DARK_STYLES = `
 export function notificationEmailHtml(params: NotificationEmailParams): string {
   const { name, email, subject, message, receivedAt, adminUrl, adminName, brandAccent } = params;
   const safeSubject = subject ?? '(none)';
-  const accentColor = brandAccent ?? '#22d3ee';
+  const monogram = initials(adminName ?? '');
 
   return `<!doctype html>
 <html lang="en">
@@ -166,7 +180,7 @@ export function notificationEmailHtml(params: NotificationEmailParams): string {
 
         <!-- Header — always dark chrome -->
         <tr><td class="card-hdr-border" style="padding:22px 28px; border-bottom:1px solid #e5e7eb; background:#0b1117;">
-          <span style="display:inline-block; width:32px; height:32px; background:${accentColor}; color:#06141a; border-radius:8px; text-align:center; line-height:32px; font-weight:800; font-size:14px; vertical-align:middle; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">RM</span>
+          <span style="display:inline-block; width:32px; height:32px; background:${esc(brandAccent)}; color:#06141a; border-radius:8px; text-align:center; line-height:32px; font-weight:800; font-size:14px; vertical-align:middle; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">${esc(monogram)}</span>
           <span style="color:#e6edf3; font-size:12px; letter-spacing:2.5px; margin-left:12px; font-weight:700; vertical-align:middle;">NEW PORTFOLIO MESSAGE</span>
         </td></tr>
 
@@ -270,7 +284,7 @@ export function replyEmailHtml(params: ReplyEmailParams): string {
             <tr>
               <!-- RM monogram — brand accent on dark, both modes -->
               <td style="vertical-align:top; padding-right:16px; width:46px;">
-                <span style="display:inline-block; width:46px; height:46px; background:${esc(signature.brandAccent)}; color:#06141a; border-radius:11px; text-align:center; line-height:46px; font-weight:800; font-size:17px; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">RM</span>
+                <span style="display:inline-block; width:46px; height:46px; background:${esc(signature.brandAccent)}; color:#06141a; border-radius:11px; text-align:center; line-height:46px; font-weight:800; font-size:17px; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">${esc(initials(signature.name))}</span>
               </td>
               <td style="vertical-align:top;">
                 <div class="sig-name" style="font-weight:700; color:#111827; font-size:15px;">${esc(signature.name)}</div>

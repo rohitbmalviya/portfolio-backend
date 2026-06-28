@@ -3,7 +3,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { PageType, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
@@ -21,7 +21,6 @@ export class PagesService {
         id: true,
         slug: true,
         title: true,
-        type: true,
         metaTitle: true,
         metaDescription: true,
         ogImage: true,
@@ -44,7 +43,6 @@ export class PagesService {
         id: true,
         slug: true,
         title: true,
-        type: true,
         published: true,
         isSystem: true,
         showInNav: true,
@@ -132,7 +130,7 @@ export class PagesService {
   async create(dto: CreatePageDto) {
     try {
       return await this.prisma.page.create({
-        data: { ...dto, type: dto.type ?? PageType.CUSTOM },
+        data: { ...dto },
       });
     } catch (error) {
       this.handleUniqueViolation(error);

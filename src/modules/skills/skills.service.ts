@@ -1,27 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { SkillGroup } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { UpdateSkillDto } from './dto/update-skill.dto';
 import { ReorderSkillsDto } from './dto/reorder-skills.dto';
-
-// Canonical group order + display labels (single source of truth for grouping).
-const GROUP_ORDER: SkillGroup[] = [
-  'LANGUAGES',
-  'FRONTEND',
-  'BACKEND',
-  'DATA',
-  'CLOUD_DEVOPS',
-  'AI',
-];
-const GROUP_LABELS: Record<SkillGroup, string> = {
-  LANGUAGES: 'Languages',
-  FRONTEND: 'Frontend',
-  BACKEND: 'Backend',
-  DATA: 'Data',
-  CLOUD_DEVOPS: 'Cloud / DevOps',
-  AI: 'AI',
-};
 
 @Injectable()
 export class SkillsService {
@@ -35,16 +16,41 @@ export class SkillsService {
     return skill;
   }
 
-  // ── Skills grouped by category (canonical order; empty groups omitted) ────
+  // ── Skills grouped by category ────────────────────────────────────────────
+  //
+  // Order and labels are driven by the `skill_groups` Configuration row seeded
+  // in the DB.  If that row is missing or empty, groups are derived from the
+  // distinct `group` values actually present in the skills table (sorted
+  // alphabetically) and the raw value is used as the label — no hardcoded list.
   async findAllGrouped() {
-    const skills = await this.prisma.skill.findMany({ orderBy: { order: 'asc' } });
-    return GROUP_ORDER.map((group) => ({
+    const [skills, cfg] = await Promise.all([
+      this.prisma.skill.findMany({ orderBy: { order: 'asc' } }),
+      this.prisma.configuration.findUnique({ where: { key: 'skill_groups' } }),
+    ]);
+
+    const raw = cfg?.items;
+    const configItems: { value: string; label: string }[] = Array.isArray(raw)
+      ? (raw as { value: string; label: string }[])
+      : [];
+
+    if (configItems.length > 0) {
+      // Config-driven: use seeded order + labels, omit empty groups.
+      return configItems
+        .map(({ value: group, label }) => ({
+          group,
+          label,
+          skills: skills.filter((s) => s.group === group),
+        }))
+        .filter((g) => g.skills.length > 0);
+    }
+
+    // Graceful fallback: group by distinct values present, sorted alphabetically.
+    const distinctGroups = [...new Set(skills.map((s) => s.group))].sort();
+    return distinctGroups.map((group) => ({
       group,
-      label: GROUP_LABELS[group],
-      skills: skills
-        .filter((s) => s.group === group)
-        .sort((a, b) => a.order - b.order),
-    })).filter((g) => g.skills.length > 0);
+      label: group,
+      skills: skills.filter((s) => s.group === group),
+    }));
   }
 
   findOne(id: string) {

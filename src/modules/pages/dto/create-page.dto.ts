@@ -1,13 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
-  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   Min,
 } from 'class-validator';
-import { PageType } from '@prisma/client';
 
 export class CreatePageDto {
   @ApiProperty({ example: 'home' })
@@ -17,11 +15,6 @@ export class CreatePageDto {
   @ApiProperty({ example: 'Home' })
   @IsString()
   title: string;
-
-  @ApiPropertyOptional({ enum: PageType, default: PageType.CUSTOM })
-  @IsEnum(PageType)
-  @IsOptional()
-  type?: PageType;
 
   @ApiPropertyOptional()
   @IsString()

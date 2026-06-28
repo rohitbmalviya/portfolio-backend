@@ -90,13 +90,7 @@ async function seedAdminUser(): Promise<void> {
 
 async function seedSkills(): Promise<void> {
   const skills: Array<{
-    group:
-      | "LANGUAGES"
-      | "FRONTEND"
-      | "BACKEND"
-      | "DATA"
-      | "CLOUD_DEVOPS"
-      | "AI";
+    group: string;
     name: string;
     level: "EXPERT" | "PROFICIENT" | "FAMILIAR";
     order: number;
@@ -1360,12 +1354,15 @@ async function seedConfig(): Promise<void> {
       ],
     },
     {
-      key: 'media_categories',
-      label: 'Media categories',
+      key: 'skill_groups',
+      label: 'Skill groups',
       items: [
-        { value: 'Projects', label: 'Projects' },
-        { value: 'Blogs', label: 'Blogs' },
-        { value: 'Raw', label: 'Raw' },
+        { value: 'LANGUAGES', label: 'Languages' },
+        { value: 'FRONTEND', label: 'Frontend' },
+        { value: 'BACKEND', label: 'Backend' },
+        { value: 'DATA', label: 'Data' },
+        { value: 'CLOUD_DEVOPS', label: 'Cloud / DevOps' },
+        { value: 'AI', label: 'AI' },
       ],
     },
   ];
@@ -1390,7 +1387,6 @@ async function seedPages(): Promise<void> {
   const systemPages: Array<{
     slug: string;
     title: string;
-    type: "HOME" | "PROJECTS" | "BLOG" | "ABOUT" | "CONTACT";
     metaTitle: string;
     metaDescription: string;
     navLabel: string;
@@ -1402,7 +1398,6 @@ async function seedPages(): Promise<void> {
     {
       slug: "home",
       title: "Home",
-      type: "HOME",
       metaTitle: "Rohit Malviya — Full-Stack Engineer",
       metaDescription:
         "Full-stack engineer (2+ yrs) building production SaaS & bank-grade systems across TypeScript, Go, Python & Java. Architected a Monte Carlo platform for Siam Commercial Bank.",
@@ -1415,7 +1410,6 @@ async function seedPages(): Promise<void> {
     {
       slug: "projects",
       title: "Projects",
-      type: "PROJECTS",
       metaTitle: "Projects — Rohit Malviya",
       metaDescription:
         "Production systems I've built — fintech, SaaS, real-estate, insurance, meeting-AI — across TypeScript, Go, Python & Java.",
@@ -1428,7 +1422,6 @@ async function seedPages(): Promise<void> {
     {
       slug: "blog",
       title: "Blog",
-      type: "BLOG",
       metaTitle: "Blog — Rohit Malviya",
       metaDescription:
         "Engineering deep-dives — Monte Carlo simulations, multi-tenant data modelling, Playwright automation, and more.",
@@ -1441,7 +1434,6 @@ async function seedPages(): Promise<void> {
     {
       slug: "contact",
       title: "Contact",
-      type: "CONTACT",
       metaTitle: "Contact — Rohit Malviya",
       metaDescription:
         "Get in touch with Rohit Malviya — full-stack engineer based in Pune, India.",

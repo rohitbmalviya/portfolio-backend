@@ -91,7 +91,7 @@ export class ContactService {
 
       return {
         name: settings?.name || OWNER_DEFAULTS.name,
-        role: settings?.tagline || 'Full-Stack Engineer',
+        role: settings?.tagline || OWNER_DEFAULTS.role,
         email: settings?.email || process.env.GMAIL_USER || OWNER_DEFAULTS.email,
         portfolioUrl: process.env.SITE_URL ?? OWNER_DEFAULTS.portfolio,
         linkedinUrl: linkedin,
@@ -104,7 +104,7 @@ export class ContactService {
       );
       return {
         name: OWNER_DEFAULTS.name,
-        role: 'Full-Stack Engineer',
+        role: OWNER_DEFAULTS.role,
         email: process.env.GMAIL_USER ?? OWNER_DEFAULTS.email,
         portfolioUrl: process.env.SITE_URL ?? OWNER_DEFAULTS.portfolio,
         linkedinUrl: OWNER_DEFAULTS.linkedin,

@@ -1,11 +1,5 @@
 -- CreateEnum
-CREATE TYPE "PageType" AS ENUM ('HOME', 'PROJECTS', 'PROJECT_DETAIL', 'BLOG', 'BLOG_POST', 'ABOUT', 'CONTACT', 'CUSTOM');
-
--- CreateEnum
 CREATE TYPE "SectionType" AS ENUM ('HERO', 'ABOUT', 'SKILLS', 'EXPERIENCE', 'FEATURED_PROJECTS', 'PROJECTS_GRID', 'BLOG_TEASER', 'ACHIEVEMENTS', 'EDUCATION', 'CONTACT', 'METRICS', 'RICH_TEXT', 'CTA', 'GALLERY');
-
--- CreateEnum
-CREATE TYPE "SkillGroup" AS ENUM ('LANGUAGES', 'FRONTEND', 'BACKEND', 'DATA', 'CLOUD_DEVOPS', 'AI');
 
 -- CreateEnum
 CREATE TYPE "SkillLevel" AS ENUM ('EXPERT', 'PROFICIENT', 'FAMILIAR');
@@ -18,7 +12,6 @@ CREATE TABLE "Page" (
     "id" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "title" TEXT NOT NULL,
-    "type" "PageType" NOT NULL,
     "metaTitle" TEXT,
     "metaDescription" TEXT,
     "ogImage" TEXT,
@@ -92,7 +85,7 @@ CREATE TABLE "BlogPost" (
 -- CreateTable
 CREATE TABLE "Skill" (
     "id" TEXT NOT NULL,
-    "group" "SkillGroup" NOT NULL,
+    "group" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "level" "SkillLevel" NOT NULL,
     "order" INTEGER NOT NULL DEFAULT 0,
@@ -236,9 +229,6 @@ CREATE UNIQUE INDEX "Page_title_key" ON "Page"("title");
 
 -- CreateIndex
 CREATE INDEX "Page_slug_idx" ON "Page"("slug");
-
--- CreateIndex
-CREATE INDEX "Page_type_idx" ON "Page"("type");
 
 -- CreateIndex
 CREATE INDEX "Page_showInNav_navOrder_idx" ON "Page"("showInNav", "navOrder");

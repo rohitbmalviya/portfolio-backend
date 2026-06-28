@@ -19,17 +19,6 @@ datasource db {
 //  ENUMS
 // ─────────────────────────────────────────────────────────────
 
-enum PageType {
-  HOME
-  PROJECTS
-  PROJECT_DETAIL
-  BLOG
-  BLOG_POST
-  ABOUT
-  CONTACT
-  CUSTOM
-}
-
 enum SectionType {
   HERO
   ABOUT
@@ -45,15 +34,6 @@ enum SectionType {
   RICH_TEXT
   CTA
   GALLERY
-}
-
-enum SkillGroup {
-  LANGUAGES
-  FRONTEND
-  BACKEND
-  DATA
-  CLOUD_DEVOPS
-  AI
 }
 
 enum SkillLevel {
@@ -77,7 +57,6 @@ model Page {
   /// Title must also be unique across pages. Migration required after this change:
   ///   npx prisma migrate dev --name add_page_title_unique
   title           String    @unique
-  type            PageType
   metaTitle       String?
   metaDescription String?
   ogImage         String?
@@ -93,7 +72,6 @@ model Page {
   sections Section[]
 
   @@index([slug])
-  @@index([type])
   @@index([showInNav, navOrder])
 }
 
@@ -184,7 +162,7 @@ model BlogPost {
 
 model Skill {
   id    String     @id @default(cuid())
-  group SkillGroup
+  group String
   name  String
   level SkillLevel
   order Int        @default(0)
@@ -301,9 +279,11 @@ model Media {
 
 // ─────────────────────────────────────────────────────────────
 //  CONFIGURATION  — admin-editable option lists for dropdowns
-//  (e.g. contact link types, social link types, media categories).
-//  NOTE: schema enums (PageType, SectionType, SkillGroup, …) stay
+//  (e.g. contact link types, social link types, skill groups).
+//  NOTE: schema enums (SectionType, SkillLevel, …) stay
 //  code-defined and are served read-only via GET /api/config/enums.
+//  SkillGroup was intentionally removed as a Prisma enum — group
+//  ordering and labels now live in the `skill_groups` config row.
 // ─────────────────────────────────────────────────────────────
 
 model Configuration {

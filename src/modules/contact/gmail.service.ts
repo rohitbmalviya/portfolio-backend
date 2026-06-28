@@ -184,8 +184,8 @@ export class GmailService {
   async sendNotification(
     thread: Pick<ContactThread, 'name' | 'email' | 'subject'>,
     bodyText: string,
-    senderName?: string,
-    brandAccent?: string,
+    senderName: string,
+    brandAccent: string,
   ): Promise<{ id: string; threadId: string }> {
     if (!this.isConfigured()) {
       this.logger.warn('GmailService not configured — sendNotification skipped');

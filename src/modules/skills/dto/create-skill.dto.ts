@@ -1,11 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { SkillGroup, SkillLevel } from '@prisma/client';
+import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { SkillLevel } from '@prisma/client';
 
 export class CreateSkillDto {
-  @ApiProperty({ enum: SkillGroup })
-  @IsEnum(SkillGroup)
-  group: SkillGroup;
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  group: string;
 
   @ApiProperty()
   @IsString()
