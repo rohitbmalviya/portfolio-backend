@@ -40,6 +40,8 @@ export class CloudinaryProvider implements OnModuleInit {
     buffer: Buffer,
     originalName: string,
     folder: string,
+    /** When set (e.g. 'webp'), Cloudinary stores the asset in this format. */
+    format?: string,
   ): Promise<CloudinaryUploadResult> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -49,6 +51,8 @@ export class CloudinaryProvider implements OnModuleInit {
           public_id: `${Date.now()}-${originalName.replace(/\.[^/.]+$/, '').replace(/[^a-z0-9_-]/gi, '_')}`,
           overwrite: false,
           resource_type: 'auto',
+          // Convert to the requested format (e.g. WebP) at upload time.
+          ...(format ? { format } : {}),
         },
         (error, result) => {
           if (error || !result) {

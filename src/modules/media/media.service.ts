@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CloudinaryProvider } from './cloudinary.provider';
 import { CreateMediaDto, UpdateMediaDto } from './dto/create-media.dto';
+import { MEDIA_BUCKET_LABEL, bucketFor } from './media.constants';
 
 // Allowed MIME types
 const ALLOWED_MIME_TYPES = new Set([
@@ -21,6 +22,15 @@ const ALLOWED_MIME_TYPES = new Set([
 ]);
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+// Raster images we convert to WebP on upload (smaller, faster).
+// SVG (vector), GIF (animation), and PDF (document) are left untouched.
+const WEBP_CONVERTIBLE = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
 
 @Injectable()
 export class MediaService {
@@ -58,15 +68,23 @@ export class MediaService {
       );
     }
 
-    const folder =
+    // Base folder (env) + one of three subfolders chosen by the upload's category:
+    //   projects → portfolio/projects · blogs → portfolio/blogs · everything else → portfolio/raw
+    const base =
       this.config.get<string>('CLOUDINARY_UPLOAD_FOLDER') ?? 'portfolio';
+    const bucket = bucketFor(dto.category); // MediaBucket
+    const folder = `${base}/${bucket}`;
+    const toWebp = WEBP_CONVERTIBLE.has(file.mimetype);
 
-    this.logger.log(`Uploading "${file.originalname}" to Cloudinary folder "${folder}"…`);
+    this.logger.log(
+      `Uploading "${file.originalname}" to "${folder}"${toWebp ? ' (→ WebP)' : ''}…`,
+    );
 
     const result = await this.cloudinary.uploadBuffer(
       file.buffer,
       file.originalname,
       folder,
+      toWebp ? 'webp' : undefined,
     );
 
     const media = await this.prisma.media.create({
@@ -76,8 +94,9 @@ export class MediaService {
         alt: dto.alt,
         width: result.width,
         height: result.height,
-        type: file.mimetype,
-        category: dto.category ?? 'Misc',
+        type: toWebp ? 'image/webp' : file.mimetype,
+        // Stored category mirrors the bucket: Projects / Blogs / Raw
+        category: MEDIA_BUCKET_LABEL[bucket],
       },
     });
 

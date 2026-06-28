@@ -1361,10 +1361,8 @@ async function seedConfig(): Promise<void> {
       label: 'Media categories',
       items: [
         { value: 'Projects', label: 'Projects' },
-        { value: 'Blog', label: 'Blog' },
-        { value: 'Awards', label: 'Awards' },
-        { value: 'Profile', label: 'Profile' },
-        { value: 'Misc', label: 'Misc' },
+        { value: 'Blogs', label: 'Blogs' },
+        { value: 'Raw', label: 'Raw' },
       ],
     },
   ];
