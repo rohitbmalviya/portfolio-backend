@@ -176,11 +176,16 @@ export class GmailService {
    * Sends multipart/alternative: a plain-text fallback and the branded HTML notification
    * template.  `adminUrl` defaults to process.env.ADMIN_MESSAGES_URL if not passed.
    *
+   * @param senderName  Admin display name shown in the email footer (e.g. 'Rohit Malviya').
+   * @param brandAccent Brand accent hex colour for the monogram chip (e.g. '#22d3ee').
+   *
    * Returns the Gmail message ID and thread ID so the caller can persist them.
    */
   async sendNotification(
     thread: Pick<ContactThread, 'name' | 'email' | 'subject'>,
     bodyText: string,
+    senderName?: string,
+    brandAccent?: string,
   ): Promise<{ id: string; threadId: string }> {
     if (!this.isConfigured()) {
       this.logger.warn('GmailService not configured — sendNotification skipped');
@@ -219,6 +224,8 @@ export class GmailService {
       message: bodyText,
       receivedAt,
       adminUrl,
+      adminName: senderName,
+      brandAccent,
     });
 
     const raw = this.buildMultipartRaw(

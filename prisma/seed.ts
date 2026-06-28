@@ -19,6 +19,9 @@ import * as bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
+// bcrypt cost factor — high enough to be slow for attackers, fast enough for a seed script
+const BCRYPT_ROUNDS = 12;
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function requireEnv(key: string): string {
@@ -67,7 +70,7 @@ async function seedAdminUser(): Promise<void> {
   const password = requireEnv("ADMIN_PASSWORD");
   const name = requireEnv("ADMIN_NAME");
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
   await prisma.adminUser.upsert({
     where: { email },

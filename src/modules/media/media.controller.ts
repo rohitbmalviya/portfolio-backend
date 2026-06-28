@@ -24,6 +24,7 @@ import { memoryStorage } from 'multer';
 import { MediaService } from './media.service';
 import { CreateMediaDto, UpdateMediaDto } from './dto/create-media.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { MAX_FILE_SIZE_BYTES } from './media.constants';
 
 @ApiTags('media')
 @Controller('media')
@@ -66,7 +67,7 @@ export class MediaController {
     FileInterceptor('file', {
       storage: memoryStorage(),
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10 MB
+        fileSize: MAX_FILE_SIZE_BYTES,
         files: 1,
       },
     }),

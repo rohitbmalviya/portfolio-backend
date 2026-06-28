@@ -8,20 +8,13 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CloudinaryProvider } from './cloudinary.provider';
 import { CreateMediaDto, UpdateMediaDto } from './dto/create-media.dto';
-import { MEDIA_BUCKET_LABEL, bucketFor } from './media.constants';
-
-// Allowed MIME types
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'image/svg+xml',
-  'application/pdf', // résumé / document uploads
-]);
-
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+import {
+  MediaBucket,
+  MEDIA_BUCKET_LABEL,
+  bucketFor,
+  MAX_FILE_SIZE_BYTES,
+  ALLOWED_MIME_TYPES,
+} from './media.constants';
 
 // Raster images we convert to WebP on upload (smaller, faster).
 // SVG (vector), GIF (animation), and PDF (document) are left untouched.
@@ -31,6 +24,19 @@ const WEBP_CONVERTIBLE = new Set([
   'image/png',
   'image/webp',
 ]);
+
+/**
+ * Converts an arbitrary string into a URL/path-safe slug.
+ * - Lowercases the input.
+ * - Replaces any run of non-alphanumeric characters with a single hyphen.
+ * - Strips leading and trailing hyphens.
+ */
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
 
 @Injectable()
 export class MediaService {
@@ -68,24 +74,43 @@ export class MediaService {
       );
     }
 
-    // Base folder (env) + one of three subfolders chosen by the upload's category:
-    //   projects → portfolio/projects · blogs → portfolio/blogs · everything else → portfolio/raw
     const base =
       this.config.get<string>('CLOUDINARY_UPLOAD_FOLDER') ?? 'portfolio';
     const bucket = bucketFor(dto.category); // MediaBucket
-    const folder = `${base}/${bucket}`;
     const toWebp = WEBP_CONVERTIBLE.has(file.mimetype);
 
+    // ── Build the structured public_id ────────────────────────────────────
+    let publicId: string;
+
+    if (bucket === MediaBucket.Projects || bucket === MediaBucket.Blogs) {
+      // entitySlug is mandatory for entity-scoped uploads.
+      const entitySlug = dto.entitySlug?.trim();
+      if (!entitySlug) {
+        throw new BadRequestException(
+          'entitySlug is required for project/blog uploads',
+        );
+      }
+      const seq = dto.sequence ?? 1;
+      if (bucket === MediaBucket.Projects) {
+        publicId = `${base}/projects/${slugify(entitySlug)}/project-image-${seq}`;
+      } else {
+        publicId = `${base}/blogs/${slugify(entitySlug)}/blog-image-${seq}`;
+      }
+    } else {
+      // Raw — derive the filename from the original upload name (no extension).
+      const nameWithoutExt = file.originalname.replace(/\.[^/.]+$/, '');
+      publicId = `${base}/raw/raw-${slugify(nameWithoutExt)}`;
+    }
+
     this.logger.log(
-      `Uploading "${file.originalname}" to "${folder}"${toWebp ? ' (→ WebP)' : ''}…`,
+      `Uploading "${file.originalname}" → publicId "${publicId}"${toWebp ? ' (→ WebP)' : ''}…`,
     );
 
-    const result = await this.cloudinary.uploadBuffer(
-      file.buffer,
-      file.originalname,
-      folder,
-      toWebp ? 'webp' : undefined,
-    );
+    const result = await this.cloudinary.uploadBuffer(file.buffer, {
+      publicId,
+      format: toWebp ? 'webp' : undefined,
+      overwrite: true,
+    });
 
     const media = await this.prisma.media.create({
       data: {

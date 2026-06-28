@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { SINGLETON_ID } from './settings.constants';
 
-// The singleton row always has this fixed ID (enforced by schema comment and upsert)
-const SINGLETON_ID = 'singleton';
+export { SINGLETON_ID };
 
 @Injectable()
 export class SettingsService {

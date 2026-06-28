@@ -10,6 +10,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload, JwtRefreshPayload } from './interfaces/jwt-payload.interface';
 import { AdminUser } from '@prisma/client';
+import {
+  DEFAULT_ACCESS_EXPIRES_IN,
+  DEFAULT_REFRESH_EXPIRES_IN,
+} from '../../common/utils/duration.util';
 
 export interface AuthTokens {
   accessToken: string;
@@ -59,13 +63,13 @@ export class AuthService {
   issueTokens(payload: JwtPayload): AuthTokens {
     const accessToken = this.jwtService.sign(payload, {
       secret: this.config.getOrThrow<string>('JWT_SECRET'),
-      expiresIn: this.config.get<string>('JWT_EXPIRES_IN') ?? '7d',
+      expiresIn: this.config.get<string>('JWT_EXPIRES_IN') ?? DEFAULT_ACCESS_EXPIRES_IN,
     });
 
     const refreshPayload: JwtRefreshPayload = { ...payload, tokenType: 'refresh' };
     const refreshToken = this.jwtService.sign(refreshPayload, {
       secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '30d',
+      expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ?? DEFAULT_REFRESH_EXPIRES_IN,
     });
 
     return { accessToken, refreshToken };

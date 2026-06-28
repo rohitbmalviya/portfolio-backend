@@ -22,11 +22,17 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AdminUser } from '@prisma/client';
+import {
+  parseDurationMs,
+  DEFAULT_ACCESS_EXPIRES_IN,
+} from '../../common/utils/duration.util';
 
 // Access-token cookie name (constant so both login + logout use the same name)
 const ACCESS_TOKEN_COOKIE = 'access_token';
 
-// Cookie options shared across set/clear
+// Cookie options shared across set/clear.
+// maxAge is derived from JWT_EXPIRES_IN so the cookie lifetime can never drift
+// from the token lifetime — both read the same env var with the same default.
 const cookieOptions = {
   httpOnly: true,
   sameSite: 'lax' as const,
@@ -34,8 +40,7 @@ const cookieOptions = {
   // We check NODE_ENV so local dev (http://localhost) still works.
   secure: process.env['NODE_ENV'] === 'production',
   path: '/',
-  // 7 days in ms — should match JWT_EXPIRES_IN
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  maxAge: parseDurationMs(process.env['JWT_EXPIRES_IN'] ?? DEFAULT_ACCESS_EXPIRES_IN),
 };
 
 @ApiTags('auth')

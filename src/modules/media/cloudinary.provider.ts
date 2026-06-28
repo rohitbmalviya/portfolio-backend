@@ -34,25 +34,27 @@ export class CloudinaryProvider implements OnModuleInit {
 
   /**
    * Upload a buffer (from multer memory storage) to Cloudinary.
-   * Always signed via the server API secret — no unsigned uploads.
+   * The caller is responsible for building the full `publicId` (path + filename
+   * without extension).  Always signed via the server API secret.
+   *
+   * @param buffer   - File data from multer memory storage.
+   * @param opts.publicId  - Full Cloudinary public_id (no extension), e.g.
+   *                         `portfolio/projects/my-slug/project-image-1`.
+   * @param opts.format    - Target format override (e.g. `'webp'`).
+   * @param opts.overwrite - Whether to overwrite an existing asset with the
+   *                         same public_id (default: true).
    */
   async uploadBuffer(
     buffer: Buffer,
-    originalName: string,
-    folder: string,
-    /** When set (e.g. 'webp'), Cloudinary stores the asset in this format. */
-    format?: string,
+    opts: { publicId: string; format?: string; overwrite?: boolean },
   ): Promise<CloudinaryUploadResult> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder,
-          // Use the original filename (without extension) as a public_id hint
-          public_id: `${Date.now()}-${originalName.replace(/\.[^/.]+$/, '').replace(/[^a-z0-9_-]/gi, '_')}`,
-          overwrite: false,
+          public_id: opts.publicId,
+          overwrite: opts.overwrite ?? true,
           resource_type: 'auto',
-          // Convert to the requested format (e.g. WebP) at upload time.
-          ...(format ? { format } : {}),
+          ...(opts.format ? { format: opts.format } : {}),
         },
         (error, result) => {
           if (error || !result) {

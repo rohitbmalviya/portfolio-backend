@@ -3,6 +3,13 @@ import { ContactThread } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GmailService, ReplySignature } from './gmail.service';
 import { CreateContactDto } from './dto/create-contact.dto';
+import { SINGLETON_ID } from '../settings/settings.constants';
+import {
+  ContactDirection,
+  ContactSource,
+  SNIPPET_MAX_LENGTH,
+  OWNER_DEFAULTS,
+} from './contact.constants';
 
 // ── Module-level helpers ──────────────────────────────────────────────────────
 
@@ -17,8 +24,8 @@ import { CreateContactDto } from './dto/create-contact.dto';
  */
 function extractSocialUrls(socials: unknown): { github: string; linkedin: string } {
   const fallback = {
-    github: 'https://github.com/rohithumancloud',
-    linkedin: 'https://linkedin.com/in/rohitbmalviya',
+    github: OWNER_DEFAULTS.github,
+    linkedin: OWNER_DEFAULTS.linkedin,
   };
 
   if (!socials || typeof socials !== 'object') return fallback;
@@ -77,30 +84,32 @@ export class ContactService {
   private async buildSignature(): Promise<ReplySignature> {
     try {
       const settings = await this.prisma.siteSettings.findUnique({
-        where: { id: 'singleton' },
+        where: { id: SINGLETON_ID },
       });
 
       const { github, linkedin } = extractSocialUrls(settings?.socials);
 
       return {
-        name: settings?.name || 'Rohit Malviya',
+        name: settings?.name || OWNER_DEFAULTS.name,
         role: settings?.tagline || 'Full-Stack Engineer',
-        email: settings?.email || process.env.GMAIL_USER || 'rohitbmalviya@gmail.com',
-        portfolioUrl: process.env.SITE_URL ?? 'https://rohitmalviya.dev',
+        email: settings?.email || process.env.GMAIL_USER || OWNER_DEFAULTS.email,
+        portfolioUrl: process.env.SITE_URL ?? OWNER_DEFAULTS.portfolio,
         linkedinUrl: linkedin,
         githubUrl: github,
+        brandAccent: settings?.brandAccent ?? OWNER_DEFAULTS.brandAccent,
       };
     } catch (err) {
       this.logger.warn(
         `buildSignature: failed to load SiteSettings — using fallbacks: ${err instanceof Error ? err.message : String(err)}`,
       );
       return {
-        name: 'Rohit Malviya',
+        name: OWNER_DEFAULTS.name,
         role: 'Full-Stack Engineer',
-        email: process.env.GMAIL_USER ?? 'rohitbmalviya@gmail.com',
-        portfolioUrl: process.env.SITE_URL ?? 'https://rohitmalviya.dev',
-        linkedinUrl: 'https://linkedin.com/in/rohitbmalviya',
-        githubUrl: 'https://github.com/rohithumancloud',
+        email: process.env.GMAIL_USER ?? OWNER_DEFAULTS.email,
+        portfolioUrl: process.env.SITE_URL ?? OWNER_DEFAULTS.portfolio,
+        linkedinUrl: OWNER_DEFAULTS.linkedin,
+        githubUrl: OWNER_DEFAULTS.github,
+        brandAccent: OWNER_DEFAULTS.brandAccent,
       };
     }
   }
@@ -123,8 +132,8 @@ export class ContactService {
         unread: true,
         messages: {
           create: {
-            direction: 'inbound',
-            source: 'web',
+            direction: ContactDirection.Inbound,
+            source: ContactSource.Web,
             body: message,
           },
         },
@@ -134,7 +143,14 @@ export class ContactService {
     // 2. Send admin notification via Gmail (non-blocking, failure-safe)
     if (this.gmail.isConfigured()) {
       try {
-        const sent = await this.gmail.sendNotification({ name, email, subject: subject ?? null }, message);
+        // Build signature to supply the admin name and brand colour for the notification email
+        const signature = await this.buildSignature();
+        const sent = await this.gmail.sendNotification(
+          { name, email, subject: subject ?? null },
+          message,
+          signature.name,
+          signature.brandAccent,
+        );
 
         if (sent.id && sent.threadId) {
           // Store the Gmail thread reference on the DB thread for future sync
@@ -147,8 +163,8 @@ export class ContactService {
           await this.prisma.contactMessage.create({
             data: {
               threadId: thread.id,
-              direction: 'outbound',
-              source: 'notification',
+              direction: ContactDirection.Outbound,
+              source: ContactSource.Notification,
               body: '[Admin notification email sent]',
               gmailMessageId: sent.id,
             },
@@ -173,7 +189,7 @@ export class ContactService {
 
   /**
    * List all threads ordered by most recent activity.
-   * Enriches each row with messageCount and a 120-char snippet of the latest message.
+   * Enriches each row with messageCount and a snippet of the latest message.
    */
   async listThreads() {
     const threads = await this.prisma.contactThread.findMany({
@@ -198,7 +214,7 @@ export class ContactService {
   /**
    * Builds a clean one-line preview: strips quoted reply history
    * (the `On … wrote:` / `>` / `-----Original Message-----` block),
-   * collapses whitespace, and truncates to 120 chars.
+   * collapses whitespace, and truncates to SNIPPET_MAX_LENGTH chars.
    */
   private snippetOf(body: string): string {
     const text = (body ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -221,7 +237,7 @@ export class ContactService {
     }
     let visible = lines.slice(0, cut).join('\n').trim();
     if (!visible) visible = text.trim(); // whole body was a quote — don't blank it
-    return visible.replace(/\s+/g, ' ').trim().substring(0, 120);
+    return visible.replace(/\s+/g, ' ').trim().substring(0, SNIPPET_MAX_LENGTH);
   }
 
   /**
@@ -288,8 +304,8 @@ export class ContactService {
         unread: false,
         messages: {
           create: {
-            direction: 'outbound',
-            source: 'app',
+            direction: ContactDirection.Outbound,
+            source: ContactSource.App,
             body,
           },
         },
@@ -401,8 +417,8 @@ export class ContactService {
     const message = await this.prisma.contactMessage.create({
       data: {
         threadId: thread.id,
-        direction: 'outbound',
-        source: 'app',
+        direction: ContactDirection.Outbound,
+        source: ContactSource.App,
         body,
         gmailMessageId,
       },
@@ -475,13 +491,13 @@ export class ContactService {
           if (existing) continue;
 
           const isFromAdmin = msg.fromEmail.toLowerCase() === gmailUser;
-          const direction = isFromAdmin ? 'outbound' : 'inbound';
+          const direction = isFromAdmin ? ContactDirection.Outbound : ContactDirection.Inbound;
 
           await this.prisma.contactMessage.create({
             data: {
               threadId: thread.id,
               direction,
-              source: 'gmail',
+              source: ContactSource.Gmail,
               body: msg.bodyText,
               gmailMessageId: msg.gmailMessageId,
               createdAt: msg.internalDate,

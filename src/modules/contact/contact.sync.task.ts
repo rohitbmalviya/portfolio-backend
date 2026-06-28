@@ -19,7 +19,7 @@ export class ContactSyncTask {
     private readonly gmail: GmailService,
   ) {}
 
-  @Cron('*/2 * * * *')
+  @Cron(process.env['GMAIL_SYNC_CRON'] ?? '*/2 * * * *')
   async handleSync(): Promise<void> {
     if (!this.gmail.isConfigured()) return;
 

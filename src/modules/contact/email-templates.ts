@@ -39,15 +39,22 @@ export interface ReplySignature {
   linkedinUrl: string;
   githubUrl: string;
   email: string;
+  /** Brand accent colour (hex), e.g. '#22d3ee'. Sourced from SiteSettings.brandAccent. */
+  brandAccent: string;
 }
 
 export interface NotificationEmailParams {
+  /** Visitor's display name (the person who submitted the form). */
   name: string;
   email: string;
   subject: string | null;
   message: string;
   receivedAt: Date;
   adminUrl: string;
+  /** Admin / portfolio owner display name — shown in the email footer. */
+  adminName?: string;
+  /** Brand accent colour for the monogram chip, e.g. '#22d3ee'. */
+  brandAccent?: string;
 }
 
 export interface ReplyEmailParams {
@@ -134,8 +141,9 @@ const REPLY_DARK_STYLES = `
  * message block · "↩ just hit Reply" callout · "Open in admin →" button · dark footer.
  */
 export function notificationEmailHtml(params: NotificationEmailParams): string {
-  const { name, email, subject, message, receivedAt, adminUrl } = params;
+  const { name, email, subject, message, receivedAt, adminUrl, adminName, brandAccent } = params;
   const safeSubject = subject ?? '(none)';
+  const accentColor = brandAccent ?? '#22d3ee';
 
   return `<!doctype html>
 <html lang="en">
@@ -158,7 +166,7 @@ export function notificationEmailHtml(params: NotificationEmailParams): string {
 
         <!-- Header — always dark chrome -->
         <tr><td class="card-hdr-border" style="padding:22px 28px; border-bottom:1px solid #e5e7eb; background:#0b1117;">
-          <span style="display:inline-block; width:32px; height:32px; background:#22d3ee; color:#06141a; border-radius:8px; text-align:center; line-height:32px; font-weight:800; font-size:14px; vertical-align:middle; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">RM</span>
+          <span style="display:inline-block; width:32px; height:32px; background:${accentColor}; color:#06141a; border-radius:8px; text-align:center; line-height:32px; font-weight:800; font-size:14px; vertical-align:middle; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">RM</span>
           <span style="color:#e6edf3; font-size:12px; letter-spacing:2.5px; margin-left:12px; font-weight:700; vertical-align:middle;">NEW PORTFOLIO MESSAGE</span>
         </td></tr>
 
@@ -214,7 +222,7 @@ export function notificationEmailHtml(params: NotificationEmailParams): string {
 
         <!-- Footer — always dark chrome -->
         <tr><td style="padding:16px 28px; background:#0b1117; border-top:1px solid #22303c; color:#5b6772; font-size:12px;">
-          Rohit Malviya &#8212; Portfolio contact
+          ${adminName ? `${esc(adminName)} &#8212; ` : ''}Portfolio contact
         </td></tr>
 
       </table>
@@ -240,7 +248,7 @@ export function replyEmailHtml(params: ReplyEmailParams): string {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light dark" />
   <meta name="supported-color-schemes" content="light dark" />
-  <title>Reply from Rohit Malviya</title>
+  <title>Reply from ${esc(signature.name)}</title>
   ${REPLY_DARK_STYLES}
 </head>
 <body class="page-bg" style="margin:0; padding:0; background:#f4f6f8; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -260,9 +268,9 @@ export function replyEmailHtml(params: ReplyEmailParams): string {
           <table role="presentation" cellpadding="0" cellspacing="0" class="sig-divider"
                  style="margin-top:28px; border-top:1px solid #e5e7eb; padding-top:18px; width:100%;">
             <tr>
-              <!-- RM monogram — always cyan on dark, both modes -->
+              <!-- RM monogram — brand accent on dark, both modes -->
               <td style="vertical-align:top; padding-right:16px; width:46px;">
-                <span style="display:inline-block; width:46px; height:46px; background:#22d3ee; color:#06141a; border-radius:11px; text-align:center; line-height:46px; font-weight:800; font-size:17px; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">RM</span>
+                <span style="display:inline-block; width:46px; height:46px; background:${esc(signature.brandAccent)}; color:#06141a; border-radius:11px; text-align:center; line-height:46px; font-weight:800; font-size:17px; font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">RM</span>
               </td>
               <td style="vertical-align:top;">
                 <div class="sig-name" style="font-weight:700; color:#111827; font-size:15px;">${esc(signature.name)}</div>
