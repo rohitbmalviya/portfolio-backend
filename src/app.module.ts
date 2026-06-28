@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
 
 // ── Feature modules ───────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ import { MediaModule } from './modules/media/media.module';
 import { HealthModule } from './modules/health/health.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ConfigFeatureModule } from './modules/config/config.module';
+import { ContactModule } from './modules/contact/contact.module';
 
 @Module({
   imports: [
@@ -28,6 +30,9 @@ import { ConfigFeatureModule } from './modules/config/config.module';
     // Rate limiting (global via APP_GUARD below)
     // Default: 120 requests per 60 seconds per IP. Auth routes override to 5/min.
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
+
+    // Cron scheduler (used by ContactSyncTask for Gmail polling)
+    ScheduleModule.forRoot(),
 
     // Data layer (global — PrismaService injected without re-importing)
     PrismaModule,
@@ -47,6 +52,7 @@ import { ConfigFeatureModule } from './modules/config/config.module';
     HealthModule,
     StatsModule,
     ConfigFeatureModule,
+    ContactModule,
   ],
   providers: [
     // Apply ThrottlerGuard globally to all routes

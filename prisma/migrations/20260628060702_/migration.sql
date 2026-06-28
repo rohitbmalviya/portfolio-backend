@@ -201,6 +201,33 @@ CREATE TABLE "AdminUser" (
     CONSTRAINT "AdminUser_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "ContactThread" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "subject" TEXT,
+    "gmailThreadId" TEXT,
+    "unread" BOOLEAN NOT NULL DEFAULT true,
+    "lastMessageAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ContactThread_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ContactMessage" (
+    "id" TEXT NOT NULL,
+    "threadId" TEXT NOT NULL,
+    "direction" TEXT NOT NULL,
+    "source" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "gmailMessageId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ContactMessage_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Page_slug_key" ON "Page"("slug");
 
@@ -276,5 +303,20 @@ CREATE UNIQUE INDEX "AdminUser_email_key" ON "AdminUser"("email");
 -- CreateIndex
 CREATE INDEX "AdminUser_email_idx" ON "AdminUser"("email");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "ContactThread_gmailThreadId_key" ON "ContactThread"("gmailThreadId");
+
+-- CreateIndex
+CREATE INDEX "ContactThread_lastMessageAt_idx" ON "ContactThread"("lastMessageAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ContactMessage_gmailMessageId_key" ON "ContactMessage"("gmailMessageId");
+
+-- CreateIndex
+CREATE INDEX "ContactMessage_threadId_createdAt_idx" ON "ContactMessage"("threadId", "createdAt");
+
 -- AddForeignKey
 ALTER TABLE "Section" ADD CONSTRAINT "Section_pageId_fkey" FOREIGN KEY ("pageId") REFERENCES "Page"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ContactMessage" ADD CONSTRAINT "ContactMessage_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "ContactThread"("id") ON DELETE CASCADE ON UPDATE CASCADE;

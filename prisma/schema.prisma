@@ -328,3 +328,43 @@ model AdminUser {
 
   @@index([email])
 }
+
+// ─────────────────────────────────────────────────────────────
+//  CONTACT  —  visitor messages + Gmail two-way sync
+// ─────────────────────────────────────────────────────────────
+
+model ContactThread {
+  id            String   @id @default(cuid())
+  /// Visitor display name
+  name          String
+  /// Visitor email address
+  email         String
+  subject       String?
+  /// Gmail thread ID, set when the notification email is sent via Gmail API
+  gmailThreadId String?  @unique
+  /// Whether the admin has read this thread
+  unread        Boolean  @default(true)
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  messages ContactMessage[]
+
+  @@index([lastMessageAt])
+}
+
+model ContactMessage {
+  id             String   @id @default(cuid())
+  threadId       String
+  /// 'inbound' (from visitor) | 'outbound' (from admin)
+  direction      String
+  /// 'web' | 'app' | 'gmail' | 'notification'
+  source         String
+  body           String   @db.Text
+  /// Gmail message ID — used for deduplication during sync
+  gmailMessageId String?  @unique
+  createdAt      DateTime @default(now())
+
+  thread ContactThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+}
