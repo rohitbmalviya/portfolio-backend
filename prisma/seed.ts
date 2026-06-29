@@ -1373,9 +1373,9 @@ async function seedPages(createdById: string): Promise<void> {
     {
       slug: "projects",
       title: "Projects",
-      metaTitle: "Projects — Rohit Malviya",
+      metaTitle: "Production Systems",
       metaDescription:
-        "Production systems I've built — fintech, SaaS, real-estate, insurance, meeting-AI — across TypeScript, Go, Python & Java.",
+        "8 shipped platforms across fintech, AI hiring, real-estate, insurance, and meeting automation — mostly full-stack ownership at Humancloud Technologies.",
       navLabel: "Work",
       navOrder: 1,
       showInNav: true,
@@ -1385,9 +1385,9 @@ async function seedPages(createdById: string): Promise<void> {
     {
       slug: "blog",
       title: "Blog",
-      metaTitle: "Blog — Rohit Malviya",
+      metaTitle: "Writing",
       metaDescription:
-        "Engineering deep-dives — Monte Carlo simulations, multi-tenant data modelling, Playwright automation, and more.",
+        "Technical deep-dives on production systems, architecture decisions, and the craft of shipping software.",
       navLabel: "Blog",
       navOrder: 2,
       showInNav: true,

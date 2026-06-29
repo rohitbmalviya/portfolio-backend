@@ -1,11 +1,24 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
 import { DefaultTheme } from '@prisma/client';
+
+/** A single social link — { type, value }. */
+export class SocialLinkDto {
+  @ApiProperty()
+  @IsString()
+  type: string;
+
+  @ApiProperty()
+  @IsString()
+  value: string;
+}
 
 export class UpdateSettingsDto {
   @ApiPropertyOptional()
@@ -29,12 +42,14 @@ export class UpdateSettingsDto {
   location?: string;
 
   @ApiPropertyOptional({
-    description: 'JSON array of { type: string, value: string } social links',
-    type: 'array',
+    description: 'Array of { type, value } social links',
+    type: [SocialLinkDto],
   })
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SocialLinkDto)
   @IsOptional()
-  socials?: { type: string; value: string }[];
+  socials?: SocialLinkDto[];
 
   @ApiPropertyOptional({ enum: DefaultTheme })
   @IsEnum(DefaultTheme)

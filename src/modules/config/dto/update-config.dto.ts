@@ -1,5 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+
+/** A single option in a config set — { value, label }. */
+export class ConfigItemDto {
+  @ApiProperty()
+  @IsString()
+  value: string;
+
+  @ApiProperty()
+  @IsString()
+  label: string;
+}
 
 export class UpdateConfigDto {
   @ApiPropertyOptional({ description: 'Human-readable label for the option set' })
@@ -7,7 +24,9 @@ export class UpdateConfigDto {
   @IsOptional()
   label?: string;
 
-  @ApiProperty({ description: 'JSON array of { value, label }' })
+  @ApiProperty({ type: [ConfigItemDto], description: 'Array of { value, label }' })
   @IsArray()
-  items: { value: string; label: string }[];
+  @ValidateNested({ each: true })
+  @Type(() => ConfigItemDto)
+  items: ConfigItemDto[];
 }
