@@ -1,6 +1,6 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
 
 export interface CloudinaryUploadResult {
   cloudinaryUrl: string;
@@ -24,12 +24,12 @@ export class CloudinaryProvider implements OnModuleInit {
 
   onModuleInit(): void {
     cloudinary.config({
-      cloud_name: this.config.getOrThrow<string>('CLOUDINARY_CLOUD_NAME'),
-      api_key: this.config.getOrThrow<string>('CLOUDINARY_API_KEY'),
-      api_secret: this.config.getOrThrow<string>('CLOUDINARY_API_SECRET'),
+      cloud_name: this.config.getOrThrow<string>("CLOUDINARY_CLOUD_NAME"),
+      api_key: this.config.getOrThrow<string>("CLOUDINARY_API_KEY"),
+      api_secret: this.config.getOrThrow<string>("CLOUDINARY_API_SECRET"),
       secure: true,
     });
-    this.logger.log('Cloudinary SDK configured.');
+    this.logger.log("Cloudinary SDK configured.");
   }
 
   /**
@@ -46,19 +46,25 @@ export class CloudinaryProvider implements OnModuleInit {
    */
   async uploadBuffer(
     buffer: Buffer,
-    opts: { publicId: string; format?: string; overwrite?: boolean },
+    opts: {
+      publicId: string;
+      format?: string;
+      overwrite?: boolean;
+      assetFolder?: string;
+    },
   ): Promise<CloudinaryUploadResult> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           public_id: opts.publicId,
           overwrite: opts.overwrite ?? true,
-          resource_type: 'auto',
+          resource_type: "auto",
+          ...(opts.assetFolder ? { asset_folder: opts.assetFolder } : {}),
           ...(opts.format ? { format: opts.format } : {}),
         },
         (error, result) => {
           if (error || !result) {
-            reject(error ?? new Error('Cloudinary upload returned no result.'));
+            reject(error ?? new Error("Cloudinary upload returned no result."));
             return;
           }
           resolve(this.mapResult(result));

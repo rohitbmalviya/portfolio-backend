@@ -3,26 +3,26 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
-import { CloudinaryProvider } from './cloudinary.provider';
-import { CreateMediaDto, UpdateMediaDto } from './dto/create-media.dto';
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PrismaService } from "../../prisma/prisma.service";
+import { CloudinaryProvider } from "./cloudinary.provider";
+import { CreateMediaDto, UpdateMediaDto } from "./dto/create-media.dto";
 import {
   MediaBucket,
   MEDIA_BUCKET_LABEL,
   bucketFor,
   MAX_FILE_SIZE_BYTES,
   ALLOWED_MIME_TYPES,
-} from './media.constants';
+} from "./media.constants";
 
 // Raster images we convert to WebP on upload (smaller, faster).
 // SVG (vector), GIF (animation), and PDF (document) are left untouched.
 const WEBP_CONVERTIBLE = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
 ]);
 
 /**
@@ -34,8 +34,8 @@ const WEBP_CONVERTIBLE = new Set([
 function slugify(s: string): string {
   return s
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 @Injectable()
@@ -51,7 +51,7 @@ export class MediaService {
   // ── List all (admin only) ────────────────────────────────────────────────
   findAll() {
     return this.prisma.media.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -64,7 +64,7 @@ export class MediaService {
     // Validate MIME type
     if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
       throw new BadRequestException(
-        `File type "${file.mimetype}" is not allowed. Allowed types: ${[...ALLOWED_MIME_TYPES].join(', ')}.`,
+        `File type "${file.mimetype}" is not allowed. Allowed types: ${[...ALLOWED_MIME_TYPES].join(", ")}.`,
       );
     }
 
@@ -76,7 +76,7 @@ export class MediaService {
     }
 
     const base =
-      this.config.get<string>('CLOUDINARY_UPLOAD_FOLDER') ?? 'portfolio';
+      this.config.get<string>("CLOUDINARY_UPLOAD_FOLDER") ?? "portfolio";
     const bucket = bucketFor(dto.category); // MediaBucket
     const toWebp = WEBP_CONVERTIBLE.has(file.mimetype);
 
@@ -88,7 +88,7 @@ export class MediaService {
       const entitySlug = dto.entitySlug?.trim();
       if (!entitySlug) {
         throw new BadRequestException(
-          'entitySlug is required for project/blog uploads',
+          "entitySlug is required for project/blog uploads",
         );
       }
       const seq = dto.sequence ?? 1;
@@ -99,17 +99,20 @@ export class MediaService {
       }
     } else {
       // Raw — derive the filename from the original upload name (no extension).
-      const nameWithoutExt = file.originalname.replace(/\.[^/.]+$/, '');
+      const nameWithoutExt = file.originalname.replace(/\.[^/.]+$/, "");
       publicId = `${base}/raw/raw-${slugify(nameWithoutExt)}`;
     }
 
+    const assetFolder = publicId.slice(0, publicId.lastIndexOf("/"));
+
     this.logger.log(
-      `Uploading "${file.originalname}" → publicId "${publicId}"${toWebp ? ' (→ WebP)' : ''}…`,
+      `Uploading "${file.originalname}" → publicId "${publicId}" (folder "${assetFolder}")${toWebp ? " (→ WebP)" : ""}…`,
     );
 
     const result = await this.cloudinary.uploadBuffer(file.buffer, {
       publicId,
-      format: toWebp ? 'webp' : undefined,
+      assetFolder,
+      format: toWebp ? "webp" : undefined,
       overwrite: true,
     });
 
@@ -120,7 +123,7 @@ export class MediaService {
         alt: dto.alt,
         width: result.width,
         height: result.height,
-        type: toWebp ? 'image/webp' : file.mimetype,
+        type: toWebp ? "image/webp" : file.mimetype,
         // Stored category mirrors the bucket: Projects / Blogs / Raw
         category: MEDIA_BUCKET_LABEL[bucket],
         // Uploader is the creator for audit purposes
@@ -157,7 +160,7 @@ export class MediaService {
     }
 
     // Seeded local assets (publicId "local/…") aren't on Cloudinary — skip.
-    if (!media.publicId.startsWith('local/')) {
+    if (!media.publicId.startsWith("local/")) {
       try {
         await this.cloudinary.destroy(media.publicId);
       } catch (err: unknown) {
