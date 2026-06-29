@@ -7,6 +7,7 @@ import { Media, Page, Prisma, Section } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
+import { attachGalleryImages } from '../../common/utils/gallery.util';
 
 // ── Response shape helpers ────────────────────────────────────────────────────
 // Returns the SAME keys as before: `ogImage` (URL) and `ogImageMediaId` (id).
@@ -124,11 +125,15 @@ export class PagesService {
     if (!page) {
       throw new NotFoundException(`Page "${slug}" not found.`);
     }
-    const media = await this.prisma.media.findMany({
-      where: { ownerType: 'page', ownerId: page.id },
-      orderBy: { order: 'asc' },
-    });
-    return mapPageWithSections(page, media);
+    // Fetch OG image and enrich GALLERY sections in parallel (single extra query each)
+    const [ogMedia, enrichedSections] = await Promise.all([
+      this.prisma.media.findMany({
+        where: { ownerType: 'page', ownerId: page.id },
+        orderBy: { order: 'asc' },
+      }),
+      attachGalleryImages(this.prisma, page.sections),
+    ]);
+    return mapPageWithSections({ ...page, sections: enrichedSections }, ogMedia);
   }
 
   // ── Admin: single page with ALL sections (incl. disabled) ───────────────
@@ -144,11 +149,14 @@ export class PagesService {
     if (!page) {
       throw new NotFoundException(`Page "${slug}" not found.`);
     }
-    const media = await this.prisma.media.findMany({
-      where: { ownerType: 'page', ownerId: page.id },
-      orderBy: { order: 'asc' },
-    });
-    return mapPageWithSections(page, media);
+    const [ogMedia, enrichedSections] = await Promise.all([
+      this.prisma.media.findMany({
+        where: { ownerType: 'page', ownerId: page.id },
+        orderBy: { order: 'asc' },
+      }),
+      attachGalleryImages(this.prisma, page.sections),
+    ]);
+    return mapPageWithSections({ ...page, sections: enrichedSections }, ogMedia);
   }
 
   async findById(id: string) {
@@ -176,11 +184,14 @@ export class PagesService {
     if (!page) {
       throw new NotFoundException(`Page "${id}" not found.`);
     }
-    const media = await this.prisma.media.findMany({
-      where: { ownerType: 'page', ownerId: id },
-      orderBy: { order: 'asc' },
-    });
-    return mapPageWithSections(page, media);
+    const [ogMedia, enrichedSections] = await Promise.all([
+      this.prisma.media.findMany({
+        where: { ownerType: 'page', ownerId: id },
+        orderBy: { order: 'asc' },
+      }),
+      attachGalleryImages(this.prisma, page.sections),
+    ]);
+    return mapPageWithSections({ ...page, sections: enrichedSections }, ogMedia);
   }
 
   // ── Create ───────────────────────────────────────────────────────────────

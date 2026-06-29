@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { ReorderSectionsDto } from './dto/reorder-sections.dto';
+import { attachGalleryImages } from '../../common/utils/gallery.util';
 
 @Injectable()
 export class SectionsService {
@@ -21,16 +22,20 @@ export class SectionsService {
   }
 
   // ── List by page ─────────────────────────────────────────────────────────
-  findByPage(pageId: string, adminMode = false) {
-    return this.prisma.section.findMany({
+  async findByPage(pageId: string, adminMode = false) {
+    const sections = await this.prisma.section.findMany({
       where: adminMode ? { pageId } : { pageId, enabled: true },
       orderBy: { order: 'asc' },
     });
+    return attachGalleryImages(this.prisma, sections);
   }
 
   // ── Single ───────────────────────────────────────────────────────────────
   async findOne(id: string) {
-    return this.findOrThrow(id);
+    const section = await this.findOrThrow(id);
+    if (section.type !== 'GALLERY') return section;
+    const enriched = await attachGalleryImages(this.prisma, [section]);
+    return enriched[0] ?? section;
   }
 
   // ── Create ───────────────────────────────────────────────────────────────

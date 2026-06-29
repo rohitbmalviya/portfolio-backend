@@ -8,13 +8,7 @@ import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CloudinaryProvider } from "./cloudinary.provider";
 import { CreateMediaDto, UpdateMediaDto } from "./dto/create-media.dto";
-import {
-  MediaBucket,
-  MEDIA_BUCKET_LABEL,
-  bucketFor,
-  MAX_FILE_SIZE_BYTES,
-  ALLOWED_MIME_TYPES,
-} from "./media.constants";
+import { MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES } from "./media.constants";
 
 // Raster images we convert to WebP on upload (smaller, faster).
 // SVG (vector), GIF (animation), and PDF (document) are left untouched.
@@ -36,6 +30,24 @@ function slugify(s: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+// ── ownerType → stored category label ────────────────────────────────────────
+
+const OWNER_TYPE_CATEGORY: Record<string, string> = {
+  project: "Projects",
+  blog: "Blogs",
+  page: "Page",
+  section: "Section",
+  experience: "Experience",
+  education: "Education",
+  achievement: "Achievement",
+  settings: "Settings",
+};
+
+/** Derives the stored category label from the ownerType field. Falls back to 'Raw'. */
+function categoryFor(ownerType?: string): string {
+  return (ownerType && OWNER_TYPE_CATEGORY[ownerType]) ?? "Raw";
 }
 
 @Injectable()
@@ -77,30 +89,109 @@ export class MediaService {
 
     const base =
       this.config.get<string>("CLOUDINARY_UPLOAD_FOLDER") ?? "portfolio";
-    const bucket = bucketFor(dto.category); // MediaBucket
+    const nameWithoutExt = file.originalname.replace(/\.[^/.]+$/, "");
+    const name = slugify(nameWithoutExt);
     const toWebp = WEBP_CONVERTIBLE.has(file.mimetype);
 
-    // ── Build the structured public_id ────────────────────────────────────
+    const { ownerType, ownerId, entitySlug, usage } = dto;
+
+    // ── Build the ownerType-scoped public_id ──────────────────────────────
+    //
+    // Multi-image owners (project / blog / section): filename is embedded in
+    // the publicId — collision-safe across different owners, idempotent on
+    // re-upload, and reorder-safe (order is stored separately, not in the path).
+    //
+    // Single-slot owners (page / experience / education / achievement /
+    // settings): a fixed role word is used so the asset is always at the same
+    // path regardless of what the file was named — overwriting a previous
+    // upload is intentional and safe.
     let publicId: string;
 
-    if (bucket === MediaBucket.Projects || bucket === MediaBucket.Blogs) {
-      // entitySlug is mandatory for entity-scoped uploads.
-      const entitySlug = dto.entitySlug?.trim();
-      if (!entitySlug) {
-        throw new BadRequestException(
-          "entitySlug is required for project/blog uploads",
-        );
+    switch (ownerType) {
+      case "project": {
+        const slug = entitySlug?.trim();
+        if (!slug) {
+          throw new BadRequestException(
+            "entitySlug is required for project uploads",
+          );
+        }
+        publicId = `${base}/projects/${slugify(slug)}/${name}`;
+        break;
       }
-      const seq = dto.sequence ?? 1;
-      if (bucket === MediaBucket.Projects) {
-        publicId = `${base}/projects/${slugify(entitySlug)}/project-image-${seq}`;
-      } else {
-        publicId = `${base}/blogs/${slugify(entitySlug)}/blog-image-${seq}`;
+      case "blog": {
+        const slug = entitySlug?.trim();
+        if (!slug) {
+          throw new BadRequestException(
+            "entitySlug is required for blog uploads",
+          );
+        }
+        publicId = `${base}/blogs/${slugify(slug)}/${name}`;
+        break;
       }
-    } else {
-      // Raw — derive the filename from the original upload name (no extension).
-      const nameWithoutExt = file.originalname.replace(/\.[^/.]+$/, "");
-      publicId = `${base}/raw/raw-${slugify(nameWithoutExt)}`;
+      case "section": {
+        if (!ownerId?.trim()) {
+          throw new BadRequestException(
+            "ownerId is required for section uploads",
+          );
+        }
+        publicId = `${base}/section/${ownerId}/${name}`;
+        break;
+      }
+      case "page": {
+        if (!ownerId?.trim()) {
+          throw new BadRequestException(
+            "ownerId is required for page uploads",
+          );
+        }
+        publicId = `${base}/page/${ownerId}/og`;
+        break;
+      }
+      case "experience": {
+        if (!ownerId?.trim()) {
+          throw new BadRequestException(
+            "ownerId is required for experience uploads",
+          );
+        }
+        publicId = `${base}/experience/${ownerId}/logo`;
+        break;
+      }
+      case "education": {
+        if (!ownerId?.trim()) {
+          throw new BadRequestException(
+            "ownerId is required for education uploads",
+          );
+        }
+        publicId = `${base}/education/${ownerId}/logo`;
+        break;
+      }
+      case "achievement": {
+        if (!ownerId?.trim()) {
+          throw new BadRequestException(
+            "ownerId is required for achievement uploads",
+          );
+        }
+        publicId = `${base}/achievement/${ownerId}/image`;
+        break;
+      }
+      case "settings": {
+        if (!usage?.trim()) {
+          throw new BadRequestException(
+            "usage is required for settings uploads",
+          );
+        }
+        if (usage !== "resume" && usage !== "og") {
+          throw new BadRequestException(
+            'usage must be "resume" or "og" for settings uploads',
+          );
+        }
+        publicId = `${base}/settings/${usage}`;
+        break;
+      }
+      default: {
+        // No ownerType provided — raw fallback for unowned assets.
+        publicId = `${base}/raw/raw-${name}`;
+        break;
+      }
     }
 
     const assetFolder = publicId.slice(0, publicId.lastIndexOf("/"));
@@ -116,23 +207,38 @@ export class MediaService {
       overwrite: true,
     });
 
-    const media = await this.prisma.media.create({
-      data: {
-        cloudinaryUrl: result.cloudinaryUrl,
+    // Common writable fields (used by both the create and update arms).
+    const commonData = {
+      cloudinaryUrl: result.cloudinaryUrl,
+      alt: dto.alt,
+      width: result.width,
+      height: result.height,
+      type: toWebp ? "image/webp" : file.mimetype,
+      // Stored category is derived from ownerType: Projects / Blogs / Page /
+      // Section / Experience / Education / Achievement / Settings / Raw
+      category: categoryFor(dto.ownerType),
+      // Deferred-upload flow: link to owner at upload time when provided
+      ...(dto.ownerId ? { ownerId: dto.ownerId } : {}),
+      ...(dto.ownerType ? { ownerType: dto.ownerType } : {}),
+      ...(dto.usage ? { usage: dto.usage } : {}),
+      ...(dto.order !== undefined ? { order: dto.order } : {}),
+    };
+
+    // Upsert by publicId: re-uploading the same asset (same publicId) overwrites
+    // it on Cloudinary AND refreshes the existing Media row, instead of failing
+    // the unique constraint. New publicId → create; existing → update.
+    const media = await this.prisma.media.upsert({
+      where: { publicId: result.publicId },
+      create: {
         publicId: result.publicId,
-        alt: dto.alt,
-        width: result.width,
-        height: result.height,
-        type: toWebp ? "image/webp" : file.mimetype,
-        // Stored category mirrors the bucket: Projects / Blogs / Raw
-        category: MEDIA_BUCKET_LABEL[bucket],
+        ...commonData,
         // Uploader is the creator for audit purposes
         ...(createdById ? { createdById } : {}),
-        // Deferred-upload flow: link to owner at upload time when provided
-        ...(dto.ownerId ? { ownerId: dto.ownerId } : {}),
-        ...(dto.ownerType ? { ownerType: dto.ownerType } : {}),
-        ...(dto.usage ? { usage: dto.usage } : {}),
-        ...(dto.order !== undefined ? { order: dto.order } : {}),
+      },
+      update: {
+        ...commonData,
+        // A re-upload is an update — stamp the updater for audit purposes
+        ...(createdById ? { updatedById: createdById } : {}),
       },
     });
 

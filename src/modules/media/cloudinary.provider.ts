@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
+import { withRetry, isTransientUploadError } from "../../common/utils/retry.util";
 
 export interface CloudinaryUploadResult {
   cloudinaryUrl: string;
@@ -28,6 +29,7 @@ export class CloudinaryProvider implements OnModuleInit {
       api_key: this.config.getOrThrow<string>("CLOUDINARY_API_KEY"),
       api_secret: this.config.getOrThrow<string>("CLOUDINARY_API_SECRET"),
       secure: true,
+      timeout: 120000,
     });
     this.logger.log("Cloudinary SDK configured.");
   }
@@ -45,6 +47,31 @@ export class CloudinaryProvider implements OnModuleInit {
    *                         same public_id (default: true).
    */
   async uploadBuffer(
+    buffer: Buffer,
+    opts: {
+      publicId: string;
+      format?: string;
+      overwrite?: boolean;
+      assetFolder?: string;
+    },
+  ): Promise<CloudinaryUploadResult> {
+    // Upload is idempotent (deterministic public_id + overwrite), so retrying
+    // transient failures (timeout / 5xx / network drop) is safe — a retry
+    // overwrites the same asset rather than creating a duplicate.
+    return withRetry(() => this.uploadOnce(buffer, opts), {
+      attempts: 3,
+      baseDelayMs: 1000,
+      isRetryable: isTransientUploadError,
+      onRetry: (err, attempt) =>
+        this.logger.warn(
+          `Cloudinary upload "${opts.publicId}" failed (attempt ${attempt}), retrying: ${String(
+            (err as { message?: string })?.message ?? err,
+          )}`,
+        ),
+    });
+  }
+
+  private uploadOnce(
     buffer: Buffer,
     opts: {
       publicId: string;
@@ -79,15 +106,25 @@ export class CloudinaryProvider implements OnModuleInit {
    * @alias destroy
    */
   async deleteByPublicId(publicId: string): Promise<void> {
-    await cloudinary.uploader.destroy(publicId);
+    await this.destroy(publicId);
   }
 
   /**
    * Destroy an asset by its publicId (alias for deleteByPublicId,
-   * consistent with Cloudinary SDK naming).
+   * consistent with Cloudinary SDK naming). Retried on transient errors.
    */
   async destroy(publicId: string): Promise<void> {
-    await cloudinary.uploader.destroy(publicId);
+    await withRetry(() => cloudinary.uploader.destroy(publicId), {
+      attempts: 3,
+      baseDelayMs: 1000,
+      isRetryable: isTransientUploadError,
+      onRetry: (err, attempt) =>
+        this.logger.warn(
+          `Cloudinary destroy "${publicId}" failed (attempt ${attempt}), retrying: ${String(
+            (err as { message?: string })?.message ?? err,
+          )}`,
+        ),
+    });
   }
 
   private mapResult(result: UploadApiResponse): CloudinaryUploadResult {
