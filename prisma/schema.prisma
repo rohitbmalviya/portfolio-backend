@@ -34,6 +34,7 @@ enum SectionType {
   RICH_TEXT
   CTA
   GALLERY
+  CONTENT_BLOCK
 }
 
 enum SkillLevel {

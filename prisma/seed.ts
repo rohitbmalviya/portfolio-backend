@@ -1395,13 +1395,61 @@ async function seedPages(createdById: string): Promise<void> {
       published: true,
     },
     {
+      slug: "experience",
+      title: "Experience",
+      metaTitle: "Experience",
+      metaDescription:
+        "Where I've shipped production software — roles, companies, and the systems I built.",
+      navLabel: "Experience",
+      navOrder: 3,
+      showInNav: true,
+      isSystem: false,
+      published: true,
+    },
+    {
+      slug: "education",
+      title: "Education",
+      metaTitle: "Education",
+      metaDescription:
+        "Degrees, institutions, and academic background.",
+      navLabel: "Education",
+      navOrder: 4,
+      showInNav: true,
+      isSystem: false,
+      published: true,
+    },
+    {
+      slug: "skills",
+      title: "Skills",
+      metaTitle: "Skills",
+      metaDescription:
+        "Languages, frameworks, and tools I work with across the stack.",
+      navLabel: "Skills",
+      navOrder: 5,
+      showInNav: true,
+      isSystem: false,
+      published: true,
+    },
+    {
+      slug: "achievements",
+      title: "Achievements",
+      metaTitle: "Achievements",
+      metaDescription:
+        "Awards, recognition, and milestones from my journey so far.",
+      navLabel: "Achievements",
+      navOrder: 6,
+      showInNav: true,
+      isSystem: false,
+      published: true,
+    },
+    {
       slug: "contact",
       title: "Contact",
       metaTitle: "Contact — Rohit Malviya",
       metaDescription:
         "Get in touch with Rohit Malviya — full-stack engineer based in Pune, India.",
       navLabel: "Contact",
-      navOrder: 3,
+      navOrder: 7,
       showInNav: true,
       isSystem: true,
       published: true,
@@ -1492,13 +1540,22 @@ async function seedPages(createdById: string): Promise<void> {
         type: "FEATURED_PROJECTS",
         order: 4,
         enabled: true,
-        data: { heading: "04 — featured work", auto: "featured", limit: 4 } satisfies Prisma.InputJsonValue,
+        data: {
+          heading: "04 — featured work",
+          auto: "featured",
+          limit: 4,
+          cta: { label: "View all projects", href: "/projects" },
+        } satisfies Prisma.InputJsonValue,
       },
       {
         type: "BLOG_TEASER",
         order: 6,
         enabled: true,
-        data: { heading: "06 — from the blog", limit: 3 } satisfies Prisma.InputJsonValue,
+        data: {
+          heading: "06 — from the blog",
+          limit: 3,
+          cta: { label: "View all posts", href: "/blog" },
+        } satisfies Prisma.InputJsonValue,
       },
       {
         type: "ACHIEVEMENTS",
@@ -1554,6 +1611,83 @@ async function seedPages(createdById: string): Promise<void> {
     console.log(`  ✓ Home page sections (${sections.length} sections)`);
   } else {
     console.log(`  ✓ Home page sections (already seeded — skipped)`);
+  }
+
+  // ── Collection list pages → a single flexible CONTENT_BLOCK ────────────────
+  // Each collection gets a dedicated CMS page (projects, blog, experience,
+  // education, skills, achievements). The page is a CONTENT_BLOCK — heading +
+  // blurb + the collection rendered as cards (mode 'all' = every item) — served
+  // by the dynamic [slug] page. Cards link through to their detail pages.
+  const listBlocks: Array<{
+    slug: string;
+    source: string;
+    heading: string;
+    paragraph: string;
+  }> = [
+    {
+      slug: "projects",
+      source: "projects",
+      heading: "Production Systems",
+      paragraph:
+        "8 shipped platforms across fintech, AI hiring, real-estate, insurance, and meeting automation — mostly full-stack ownership at Humancloud Technologies.",
+    },
+    {
+      slug: "blog",
+      source: "blog",
+      heading: "Writing",
+      paragraph:
+        "Technical deep-dives on production systems, architecture decisions, and the craft of shipping software.",
+    },
+    {
+      slug: "experience",
+      source: "experience",
+      heading: "Experience",
+      paragraph:
+        "Roles where I've owned production systems end to end — click any entry for the full story.",
+    },
+    {
+      slug: "education",
+      source: "education",
+      heading: "Education",
+      paragraph: "Degrees and institutions that shaped my foundation.",
+    },
+    {
+      slug: "skills",
+      source: "skills",
+      heading: "Skills",
+      paragraph:
+        "The languages, frameworks, and tools I reach for across the stack.",
+    },
+    {
+      slug: "achievements",
+      source: "achievements",
+      heading: "Achievements",
+      paragraph: "Awards, recognition, and milestones along the way.",
+    },
+  ];
+
+  for (const lb of listBlocks) {
+    const page = await prisma.page.findUniqueOrThrow({ where: { slug: lb.slug } });
+    const count = await prisma.section.count({ where: { pageId: page.id } });
+    if (count === 0) {
+      await prisma.section.create({
+        data: {
+          pageId: page.id,
+          type: "CONTENT_BLOCK" as never,
+          order: 0,
+          enabled: true,
+          data: {
+            heading: lb.heading,
+            paragraphs: [lb.paragraph],
+            source: lb.source,
+            mode: "all",
+          } satisfies Prisma.InputJsonValue,
+        },
+      });
+      console.log(`  ✓ ${lb.slug} page CONTENT_BLOCK seeded`);
+    } else {
+      console.log(`  ✓ ${lb.slug} page sections (already seeded — skipped)`);
+    }
   }
 }
 
