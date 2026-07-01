@@ -1272,8 +1272,11 @@ Gemini is remarkably good at this — it uses speech patterns, first mentions ("
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function seedMedia(): Promise<void> {
-  await prisma.media.deleteMany({});
-  console.log('  ✓ Media (none seeded — upload via Cloudinary)');
+  // Preserve section-linked placeholder media (gallery images are managed in seedPages).
+  await prisma.media.deleteMany({
+    where: { OR: [{ ownerType: null }, { ownerType: { not: "section" } }] },
+  });
+  console.log("  ✓ Media (non-section rows cleared — upload real assets via Cloudinary)");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1454,6 +1457,17 @@ async function seedPages(createdById: string): Promise<void> {
       isSystem: true,
       published: true,
     },
+    {
+      slug: "showcase",
+      title: "Showcase",
+      metaTitle: "Section Showcase",
+      metaDescription: "Every section type, for review.",
+      navLabel: "Showcase",
+      navOrder: 8,
+      showInNav: true,
+      isSystem: false,
+      published: true,
+    },
   ];
 
   for (const pageData of systemPages) {
@@ -1528,13 +1542,13 @@ async function seedPages(createdById: string): Promise<void> {
         type: "SKILLS",
         order: 2,
         enabled: true,
-        data: { heading: "02 — skills", source: "skills-table" } satisfies Prisma.InputJsonValue,
+        data: { heading: "02 — skills", source: "skills-table", cta: { label: "View all skills", href: "/skills" } } satisfies Prisma.InputJsonValue,
       },
       {
         type: "EXPERIENCE",
         order: 3,
         enabled: true,
-        data: { heading: "03 — experience", source: "experience-table" } satisfies Prisma.InputJsonValue,
+        data: { heading: "03 — experience", source: "experience-table", cta: { label: "View all experience", href: "/experience" } } satisfies Prisma.InputJsonValue,
       },
       {
         type: "FEATURED_PROJECTS",
@@ -1561,7 +1575,7 @@ async function seedPages(createdById: string): Promise<void> {
         type: "ACHIEVEMENTS",
         order: 7,
         enabled: true,
-        data: { heading: "07 — recognition", source: "achievements-table" } satisfies Prisma.InputJsonValue,
+        data: { heading: "07 — recognition", source: "achievements-table", cta: { label: "View all achievements", href: "/achievements" } } satisfies Prisma.InputJsonValue,
       },
       {
         type: "EDUCATION",
@@ -1577,6 +1591,7 @@ async function seedPages(createdById: string): Promise<void> {
               detail: "CGPA 8.9 / 10",
             },
           ],
+          cta: { label: "View all education", href: "/education" },
         } satisfies Prisma.InputJsonValue,
       },
       {
@@ -1688,6 +1703,163 @@ async function seedPages(createdById: string): Promise<void> {
     } else {
       console.log(`  ✓ ${lb.slug} page sections (already seeded — skipped)`);
     }
+  }
+
+  // ── Contact page → CONTACT section ───────────────────────────────────────
+  const contactPage = await prisma.page.findUniqueOrThrow({
+    where: { slug: "contact" },
+  });
+  const contactSectionCount = await prisma.section.count({
+    where: { pageId: contactPage.id },
+  });
+  if (contactSectionCount === 0) {
+    await prisma.section.create({
+      data: {
+        pageId: contactPage.id,
+        type: "CONTACT" as never,
+        order: 0,
+        enabled: true,
+        data: {
+          heading: "Let's build something.",
+          blurb:
+            "Open to senior full-stack / backend / fintech roles. Send me a message — I reply quickly.",
+          showForm: true,
+          email: "rohitbmalviya@gmail.com",
+          socials: {
+            github: "https://github.com/rohithumancloud",
+            linkedin: "https://linkedin.com/in/rohitbmalviya",
+          },
+        } satisfies Prisma.InputJsonValue,
+      },
+    });
+    console.log("  ✓ Contact page CONTACT section seeded");
+  } else {
+    console.log("  ✓ Contact page sections (already seeded — skipped)");
+  }
+
+  // ── Showcase page → every remaining section type ──────────────────────────
+  const showcasePage = await prisma.page.findUniqueOrThrow({
+    where: { slug: "showcase" },
+  });
+  const showcaseSectionCount = await prisma.section.count({
+    where: { pageId: showcasePage.id },
+  });
+  if (showcaseSectionCount === 0) {
+    await prisma.section.create({
+      data: {
+        pageId: showcasePage.id,
+        type: "METRICS" as never,
+        order: 0,
+        enabled: true,
+        data: {
+          items: [
+            { value: "8", label: "platforms" },
+            { value: "5", label: "languages" },
+            { value: "2+", label: "years" },
+            { value: "1,242", label: "tests (SCB)" },
+          ],
+        } satisfies Prisma.InputJsonValue,
+      },
+    });
+
+    await prisma.section.create({
+      data: {
+        pageId: showcasePage.id,
+        type: "RICH_TEXT" as never,
+        order: 1,
+        enabled: true,
+        data: {
+          heading: "Rich Text",
+          body: "A **markdown** block: supports _emphasis_, lists, and links. Used for long-form content between sections.",
+        } satisfies Prisma.InputJsonValue,
+      },
+    });
+
+    await prisma.section.create({
+      data: {
+        pageId: showcasePage.id,
+        type: "PROJECTS_GRID" as never,
+        order: 2,
+        enabled: true,
+        data: {
+          heading: "Projects Grid",
+          filter: "all",
+          cta: { label: "View all projects", href: "/projects" },
+        } satisfies Prisma.InputJsonValue,
+      },
+    });
+
+    await prisma.section.create({
+      data: {
+        pageId: showcasePage.id,
+        type: "CONTENT_BLOCK" as never,
+        order: 3,
+        enabled: true,
+        data: {
+          eyebrow: "// CONTENT BLOCK",
+          heading: "Flexible Content Block",
+          paragraphs: [
+            "A text-only content block.",
+            "It can also render any collection as cards — see the Projects/Blog/Experience pages.",
+          ],
+          align: "center",
+        } satisfies Prisma.InputJsonValue,
+      },
+    });
+
+    // GALLERY — capture id so we can link the placeholder media rows
+    const gallerySection = await prisma.section.create({
+      data: {
+        pageId: showcasePage.id,
+        type: "GALLERY" as never,
+        order: 4,
+        enabled: true,
+        data: {
+          heading: "Gallery",
+        } satisfies Prisma.InputJsonValue,
+      },
+    });
+
+    await prisma.section.create({
+      data: {
+        pageId: showcasePage.id,
+        type: "CTA" as never,
+        order: 5,
+        enabled: true,
+        data: {
+          heading: "Call To Action",
+          text: "This is the standalone CTA section (a real button, distinct from the section 'View all' links).",
+          button: { label: "Get in touch", href: "/contact" },
+        } satisfies Prisma.InputJsonValue,
+      },
+    });
+
+    console.log("  ✓ Showcase page sections seeded (6 sections)");
+
+    // Placeholder gallery media — 3 Cloudinary demo images (res.cloudinary.com
+    // is already whitelisted in next.config; picsum is not). Distinct effects.
+    const galleryUrls = [
+      "https://res.cloudinary.com/demo/image/upload/w_1200,h_800,c_fill/sample.jpg",
+      "https://res.cloudinary.com/demo/image/upload/w_1200,h_800,c_fill,e_grayscale/sample.jpg",
+      "https://res.cloudinary.com/demo/image/upload/w_1200,h_800,c_fill,e_sepia/sample.jpg",
+    ];
+    for (let n = 1; n <= 3; n++) {
+      await prisma.media.create({
+        data: {
+          cloudinaryUrl: galleryUrls[n - 1],
+          publicId: `showcase/gallery/${n}`,
+          alt: `Sample gallery image ${n}`,
+          type: "image/jpeg",
+          category: "Section",
+          ownerType: "section",
+          ownerId: gallerySection.id,
+          order: n - 1,
+        },
+      });
+    }
+    console.log("  ✓ Showcase gallery media (3 placeholder images)");
+  } else {
+    console.log("  ✓ Showcase page sections (already seeded — skipped)");
   }
 }
 
