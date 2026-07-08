@@ -1,0 +1,46 @@
+# ─────────────────────────────────────────────────────────────
+#  CI — portfolio-backend
+#  Runs on every PR and on pushes to main.
+#  Gates merges via branch protection (require the "ci" check).
+#  Deploys are NOT done here — Render auto-deploys main via its
+#  Git integration once CI-protected merges land.
+# ─────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    env:
+      # Dummy — prisma validate resolves env("DATABASE_URL") but never connects.
+      # No real credentials are ever needed (or present) in CI.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build

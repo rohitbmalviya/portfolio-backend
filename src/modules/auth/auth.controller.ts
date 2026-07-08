@@ -33,12 +33,16 @@ const ACCESS_TOKEN_COOKIE = 'access_token';
 // Cookie options shared across set/clear.
 // maxAge is derived from JWT_EXPIRES_IN so the cookie lifetime can never drift
 // from the token lifetime — both read the same env var with the same default.
+//
+// In production the frontend (Vercel) and this API (Render) live on DIFFERENT
+// sites, so the auth cookie must be SameSite=None + Secure or browsers will
+// refuse to send it on cross-site fetches (login would silently break).
+// Local dev is same-site over http, so Lax + non-secure keeps working there.
+const isProduction = process.env['NODE_ENV'] === 'production';
 const cookieOptions = {
   httpOnly: true,
-  sameSite: 'lax' as const,
-  // In production the cookie should be sent only over HTTPS.
-  // We check NODE_ENV so local dev (http://localhost) still works.
-  secure: process.env['NODE_ENV'] === 'production',
+  sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+  secure: isProduction,
   path: '/',
   maxAge: parseDurationMs(process.env['JWT_EXPIRES_IN'] ?? DEFAULT_ACCESS_EXPIRES_IN),
 };
@@ -112,7 +116,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Clear the auth cookie (logout)' })
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie(ACCESS_TOKEN_COOKIE, { path: '/' });
+    // Options must match the ones used on set (minus maxAge) or the browser
+    // will not clear the cookie.
+    const { maxAge: _maxAge, ...clearOptions } = cookieOptions;
+    res.clearCookie(ACCESS_TOKEN_COOKIE, clearOptions);
     return { data: { message: 'Logged out successfully.' } };
   }
 }
