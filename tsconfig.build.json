@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  // Build ONLY the app source. The base tsconfig also includes prisma/**
+  // (so the seed stays type-checked in the editor / CI tsc), but compiling
+  // it would nest the output as dist/src/main.js — while deploy/start
+  // scripts expect dist/main.js. The seed runs via ts-node, never compiled.
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts"]
+}
