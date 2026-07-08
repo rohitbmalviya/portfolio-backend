@@ -899,6 +899,368 @@ CRUD for listings with rich metadata (type, bedrooms, bathrooms, amenities, geol
       order: 7,
       published: true,
     },
+
+    // ── 10. FlowDesk — CRM & Invoicing with an AI Assistant ──────────────────────────────────────────
+    {
+      slug: "flowdesk",
+      title: "FlowDesk — CRM & Invoicing with an AI Assistant",
+      oneLiner:
+        "Multi-tenant CRM for freelancers: clients, a kanban deals pipeline, printable invoices, and a Gemini-powered assistant that summarizes client history and drafts follow-up emails from real CRM data.",
+      role: "Personal project — sole architect & developer",
+      tags: [
+        "Full-Stack",
+        "AI Integration",
+        "CRM",
+        "SaaS",
+        "Multi-Tenant",
+        "Server Actions",
+        "Invoicing",
+      ],
+      stack: [
+        "Next.js 16",
+        "React 19",
+        "TypeScript",
+        "Prisma 7",
+        "SQLite (libSQL)",
+        "Tailwind CSS v4",
+        "shadcn/ui",
+        "Google Gemini",
+        "Zod",
+      ],
+      metric:
+        "~25 Zod-validated server actions as the entire backend — zero REST routes; AI features work with zero config via a demo-mode fallback built from real data",
+      overview:
+        "FlowDesk is a full-stack, multi-tenant CRM and invoicing app for freelancers and small businesses. Users manage clients with an activity timeline, move deals through a five-stage kanban pipeline, and issue auto-numbered, print-ready invoices with computed totals. An AI panel on each client profile — powered by Google Gemini 2.5 Flash — summarizes the relationship and drafts personalized follow-up emails grounded in the client's actual deals and interactions, and degrades gracefully to data-driven templates when no API key is set.",
+      contribution:
+        "Sole architect and developer: designed the Prisma schema (6 models, documented Restrict/Cascade delete policy, composite multi-tenant indexes, integer-paise money), built custom JWT auth from scratch (jose HS256, httpOnly cookies, Next.js 16 proxy route guard), implemented the full backend as ~25 typed Server Actions with per-user tenant isolation in every query, integrated the Gemini REST API server-side with ownership checks and a demo-mode fallback, and built the UI (kanban board, dashboard KPIs with Recharts, print-CSS invoices) on Tailwind v4 + shadcn/ui.",
+      body: `FlowDesk is a CRM and invoicing platform I built end-to-end as a personal project, on Next.js 16's App Router with React Server Components and Server Actions as the entire backend — there is no REST layer. Every mutation is a typed server action validated with Zod, returning a consistent \`ActionResult\` envelope with field-level errors, and every database query is scoped by \`ownerId\` so each user's workspace is fully isolated.
+
+## Data model & invoicing
+
+The Prisma 7 schema (SQLite via libSQL, Postgres-swappable) covers Users, Clients, Deals, Activities, Invoices, and InvoiceItems with four enums for statuses and stages. Design decisions are documented in the schema itself: \`Restrict\` on user-owned relations to prevent silent cascade deletes, \`Cascade\` where children are meaningless without their parent, and composite indexes for the hot multi-tenant list queries. All money is stored as integer paise (INR) — no floats. Invoice totals are computed from line items at query time to avoid drift, and invoice numbers are generated server-side (\`INV-001\`, \`INV-002\`, …) per workspace, with a \`@@unique([ownerId, number])\` constraint as the race-condition net.
+
+## Deals pipeline & app
+
+Deals move through a five-stage kanban board (Lead → Qualified → Proposal → Won/Lost); stage changes run through a validated \`moveDealStage\` action inside \`useTransition\`. A dashboard aggregates KPIs — open pipeline value, won-this-month, outstanding invoices — with a Recharts revenue view. Auth is hand-rolled: jose-signed HS256 JWTs in an httpOnly cookie with 7-day sliding sessions, bcryptjs hashing, and route protection in Next 16's \`proxy.ts\`.
+
+## The AI assistant
+
+Each client profile has an AI panel with two actions, implemented as server-only functions calling Google Gemini 2.5 Flash over REST. "Summarize activity" loads the client's ten most recent deals and twenty activities (after verifying ownership) and prompts for a factual relationship summary with an explicit no-invention instruction; "Draft follow-up email" builds a personalized, subject-lined email from recent deals, interactions, and an optional goal. If the API key is missing or the call fails, both actions fall back to templated responses assembled from the same real data and flagged as demo mode in the UI — so the feature is demonstrable with zero configuration. The API key never leaves the server. Scope is honest: single-turn grounded generation, not chat, tool use, or RAG.`,
+      featured: false,
+      order: 9,
+      published: true,
+    },
+
+    // ── 11. ShopRewards — Loyalty & Reward System ──────────────────────────────────────────
+    {
+      slug: "shoprewards",
+      title: "ShopRewards — Loyalty & Reward System",
+      oneLiner:
+        "Full-stack loyalty platform for a hardware/electrical shop where tradespeople earn points for bringing customers and redeem them for rewards — built on an atomic, append-only points ledger.",
+      role: "Personal project — sole architect & developer",
+      tags: [
+        "Full-stack",
+        "Monorepo",
+        "REST API",
+        "Auth & Security",
+        "Database Design",
+        "Loyalty / Points Engine",
+        "Docker",
+      ],
+      stack: [
+        "Next.js 14",
+        "NestJS 10",
+        "TypeScript",
+        "Prisma",
+        "PostgreSQL 16",
+        "TanStack Query",
+        "Tailwind CSS",
+        "Docker",
+        "pnpm workspaces",
+      ],
+      metric:
+        "7 atomic point flows over an append-only ledger — balances always reconcile, never go negative",
+      overview:
+        "ShopRewards is a loyalty program for a hardware & electrical shop: tradespeople (electricians, plumbers, carpenters, AC technicians, contractors) earn points every time they bring an end-customer to the shop and redeem them for rewards like an iPhone 15 at 40,000 points. It ships as a pnpm monorepo — a Next.js 14 web app (marketing landing page, customer portal, admin portal), a NestJS 10 REST API (~36 endpoints, 10 modules), and a shared TypeScript package that keeps domain enums and types identical on both sides — backed by PostgreSQL via Prisma and deployed on Vercel + Render + Neon.",
+      contribution:
+        "Sole architect and developer of every layer: the data model (11 Prisma models around an append-only PointLedger), the points engine with a single-writer grant() that row-locks the customer (SELECT … FOR UPDATE) so balances stay consistent under concurrency, cookie-based JWT auth with rotating hashed refresh tokens and reuse-detection family revocation, the role-guarded admin and customer portals with TanStack Query and Recharts dashboards, Dockerized dev setup with a one-command bootstrap and a realistic 700-line seed, unit/e2e tests, and the production deployment with a first-party cookie proxy.",
+      body: `ShopRewards models a real small-business problem: a hardware shop wants to reward the tradespeople who bring it customers. The shopkeeper (ADMIN) records each purchase and awards points; tradespeople (CUSTOMERs) track a fully transparent ledger, refer peers, collect automatic bonuses, and redeem points for catalog rewards the admin approves and fulfils.
+
+**Architecture.** A pnpm monorepo with three workspaces: \`apps/web\` (Next.js 14 App Router, Tailwind, shadcn-style Radix UI), \`apps/api\` (NestJS 10 + Prisma 5 on PostgreSQL 16), and \`packages/shared\` (domain enums, point-economy defaults, response shapes) so frontend and backend vocabulary never drift.
+
+**The points engine.** Every point movement in the system flows through one method — \`PointsService.grant()\` — the only code allowed to mutate a balance. It runs inside a Prisma transaction, row-locks the customer with \`SELECT … FOR UPDATE\`, rejects any movement that would go negative, and atomically writes an append-only \`PointLedger\` row (signed points, balance-after, originating transaction/redemption/admin). Seven flows sit on top: admin-awarded purchase points, redemptions with a race-safe stock decrement and immediate deduction, automatic refund-and-restock when an admin rejects, referral bonuses on signup via code, a once-per-day login bonus using double-checked locking, an idempotent 6 a.m. birthday cron, and manual admin bonuses — each atomic and audit-trailed.
+
+**Auth & hardening.** One login endpoint resolves admins (email) or customers (email or phone), with Argon2 hashing. Sessions are httpOnly-cookie JWTs plus rotating opaque refresh tokens stored hashed; reuse of a rotated token revokes the entire token family. Helmet, strict DTO validation, global rate limiting, and problem-details errors round out the API; Next.js edge middleware mirrors role routing while the API stays the real boundary. The web data layer is 16 TanStack Query hooks over typed axios modules with a deduplicated silent-refresh interceptor.
+
+**Shipping.** Dockerized Postgres, \`pnpm setup\` one-command bootstrap, a 727-line realistic seed, unit and e2e tests, and a live deployment: Vercel (web) proxying \`/api\` to Render (API, needed for the cron) over Neon Postgres so auth cookies stay first-party. Honest scope: a personal demo project — single shop, no SMTP, local image storage — but built on production patterns.`,
+      featured: false,
+      order: 10,
+      published: true,
+    },
+
+    // ── 12. GaitPro — Browser-Based Gait Analysis Engine ──────────────────────────────────────────
+    {
+      slug: "gait-engine",
+      title: "GaitPro — Browser-Based Gait Analysis Engine",
+      oneLiner:
+        "A zero-dependency gait & biomechanics dashboard that detects steps, computes force/joint-angle metrics, and renders a video-synced skeleton overlay — all in vanilla JavaScript.",
+      role: "Personal project — sole architect & developer",
+      tags: [
+        "Biomechanics",
+        "Gait Analysis",
+        "Data Visualization",
+        "Computer Vision",
+        "Signal Processing",
+        "Canvas Rendering",
+        "Vanilla JS",
+      ],
+      stack: [
+        "JavaScript (ES6)",
+        "HTML5 Canvas",
+        "Chart.js",
+        "MediaPipe Pose (upstream)",
+        "CSS3",
+        "FileReader / Blob API",
+        "requestAnimationFrame",
+        "localStorage",
+      ],
+      metric:
+        "~6,100 lines of hand-written vanilla JS across 7 IIFE modules with exactly one runtime dependency (Chart.js) — no framework, no build step, no backend",
+      overview:
+        "GaitPro is a single-page, entirely client-side dashboard that turns walking data into clinical-style gait analytics. It accepts a ground-reaction-force CSV, a MediaPipe pose-landmark CSV, or one-click synthetic demo data, then detects individual steps, segments the gait cycle into stance/swing phases, computes per-step biomechanical parameters, and flags left/right asymmetries. A second pipeline overlays a color-coded skeleton on uploaded video, computes live joint angles, and classifies gait phase — all synchronized frame-accurately to playback. There is no server: files are read in-browser, analysis runs in memory, and exports are generated as client-side downloads.",
+      contribution:
+        "As sole developer I designed and built every layer in plain JavaScript with no framework or bundler — a namespaced IIFE module architecture with a clean public API per module. I wrote the analysis engine from scratch (threshold-based step-detection state machine, impulse via numerical integration, symmetry index, gait-cycle segmentation), modeled a physiologically realistic double-peak ground-reaction-force generator from a sum of Gaussians with Box–Muller noise, implemented dot-product joint-angle geometry and prominence-based heel-strike detection over MediaPipe's 33 landmarks, and engineered a Canvas 2D skeleton renderer synced to HTML5 video via a requestAnimationFrame loop plus a custom Chart.js playhead plugin with progressive, throttled plotting.",
+      body: `## Architecture
+
+GaitPro is deliberately dependency-light: seven vanilla-JavaScript modules, each an IIFE returning a small public API (\`GaitEngine\`, \`GaitData\`, \`SkeletonData\`, \`GaitCharts\`, \`VideoCharts\`, \`VideoPlayer\`, \`App\`), wired together by plain \`<script>\` ordering. The only third-party runtime code is Chart.js from a CDN — no React/Vue, no bundler, no npm install, no backend. The controller (\`app.js\`) holds one state object, routes six SPA views, and writes to the DOM directly with \`createElement\`/\`replaceChildren\` (never \`innerHTML\` on user data). Two analysis pipelines share one dark, CSS-variable design system: a force pipeline (CSV or synthetic → step detection → parameters → charts) and a video pipeline (video + pose CSV → skeleton overlay + live angles).
+
+## The Engine
+
+The analytical core is a threshold-based state machine that walks each foot's force channel, opening a stance window when force crosses a configurable threshold and keeping it only if its duration falls within valid bounds — rejecting noise spikes and preventing merged steps. Per step it derives peak force, contact time, loading rate, and impulse (a Riemann-sum integration of the force curve). It then computes mean ± sample standard deviation per foot, a left/right symmetry index (\`|L−R|/((L+R)/2)×100\`) with tiered alerts, and stance/swing gait-cycle percentages. Because settings (force threshold, step-duration limits, asymmetry threshold) are live-bound sliders, changing any of them re-runs the entire engine and repaints every view.
+
+## Decisions
+
+Two choices define the project. First, the synthetic **ground-reaction-force generator** models real biomechanics rather than faking noise: the classic double-hump "M-curve" is built from a sum of Gaussians (heel-strike peak ~22% stance, push-off ~78%, mid-stance valley) with exponential heel-strike/toe-off ramps, a configurable asymmetry factor, and Box–Muller Gaussian noise — realistic enough that the same detector runs identically on real and synthetic input. Second, **rendering is hand-rolled on Canvas 2D**: the skeleton overlay is drawn bone-by-bone with visibility-weighted opacity and region color-coding, driven by a requestAnimationFrame loop that maps \`video.currentTime\` to the nearest data frame for frame-accurate sync, while a custom Chart.js \`afterDraw\` plugin paints a scrub playhead and reveals angle timelines progressively as the clip plays. Content-aware CSV parsing auto-detects force vs. pose files (and converts pose ankle-height into a pseudo-force signal), and persistence uses prototype-pollution-safe key whitelisting. Scope is kept honest — force is modeled or pose-derived, not force-plate, and pose estimation runs in an upstream pipeline that emits the landmark CSV this app consumes.`,
+      featured: false,
+      order: 11,
+      published: true,
+    },
+
+    // ── 13. MediBook — Doctor Appointment Booking Platform ──────────────────────────────────────────
+    {
+      slug: "medibook",
+      title: "MediBook — Doctor Appointment Booking Platform",
+      oneLiner:
+        "Full-stack healthcare booking app where patients book real-time computed slots with a deposit flow, and doctors manage schedules from a dedicated dashboard — with double-booking prevention enforced at the database level.",
+      role: "Personal project — sole architect & developer",
+      tags: [
+        "Full-Stack",
+        "Healthcare",
+        "Booking Engine",
+        "Server Actions",
+        "Authentication",
+        "Database Design",
+        "TypeScript",
+      ],
+      stack: [
+        "Next.js 16",
+        "React 19",
+        "TypeScript",
+        "Prisma 7",
+        "SQLite/libSQL",
+        "Tailwind CSS v4",
+        "shadcn/ui",
+        "Zod",
+        "jose (JWT)",
+      ],
+      metric:
+        "Zero-REST architecture: 23 typed, Zod-validated Server Actions are the entire API surface — end-to-end types from DB to UI",
+      overview:
+        "MediBook is a two-sided doctor-appointment platform: patients browse and filter doctors by specialty and city, pick from live bookable slots computed from each doctor's weekly recurring schedule, and book with a mock deposit payment; doctors get their own dashboard with booking management, stats, a weekly-availability editor, and profile controls. The 4-state appointment lifecycle (PENDING → CONFIRMED / CANCELLED / COMPLETED) is paired 1-1 with a payment record whose amount snapshots the fee in integer paise at booking time.",
+      contribution:
+        "Sole architect and developer of everything: the 5-model Prisma schema with 16 query-tuned indexes, the slot-expansion booking engine with two-layer double-booking prevention (application re-check plus a DB unique constraint catching P2002 races), custom stateless JWT auth (jose HS256, httpOnly cookie, bcrypt-12) enforced both per-action and at the edge via Next 16's proxy.ts, the transactional booking/payment flow behind a gateway-shaped payment seam, both dashboards, and the Tailwind v4 + shadcn/ui frontend.",
+      body: `## Architecture
+
+MediBook is a Next.js 16 App Router application (React 19, TypeScript 5) with **no REST API layer at all**: 23 typed server functions across 4 action modules (auth, doctors, booking, doctor-dashboard) form the entire API surface. Every action validates input with Zod and returns an \`ActionResult<T>\` discriminated union, so errors are values handled exhaustively in the UI and types flow unbroken from Prisma to React. Data lives in Prisma 7 via the libSQL driver adapter — SQLite locally, swappable to Turso/Postgres — with 5 models, 3 enums, and 16 secondary indexes tuned to the two dashboards' query patterns. Route protection runs at the edge in Next 16's \`proxy.ts\` (the middleware successor), verifying the jose-signed JWT session cookie without a database round-trip and enforcing role-based redirects (\`/doctor/*\` for doctors, \`/dashboard\` and \`/booking/*\` for any authenticated user).
+
+## Key Engineering Decisions
+
+**Compute slots, don't store them.** Doctors define weekly recurring availability templates (day-of-week, window, slot duration); the booking engine expands these into concrete bookable datetimes for the next 14 days, subtracts PENDING/CONFIRMED appointments fetched in a single range query, and drops past slots — no slot-row explosion in the database.
+
+**Double-booking is a database guarantee.** Booking re-checks the slot at the application level for good UX, but the real guard is \`@@unique([doctorId, startsAt])\` — a concurrent race throws Prisma \`P2002\`, caught and mapped to a friendly "slot was just taken" message.
+
+**Transactional money handling.** Appointment and pending payment are created atomically; confirming payment flips Payment→PAID and Appointment→CONFIRMED in one transaction. Amounts are integer paise (no float currency bugs), snapshotted onto the payment so later fee changes don't rewrite history. The payment provider sits behind a single seam module shaped like a real gateway call — currently a mock, deliberately signature-compatible with Stripe/Razorpay.
+
+**Deliberate schema details.** Appointment user relations use \`onDelete: Restrict\` (medical records shouldn't cascade away), and the codebase carefully handles a dual-ID subtlety: availability slots reference \`DoctorProfile.id\` while appointments reference \`User.id\`.
+
+**Honest scope:** a personal portfolio project — mock payments, no automated tests, timezone-naive clinic-local times, and seeded (not review-computed) ratings. Roughly 7,400 lines across 51 TS/TSX files, with a 432-line idempotent seed providing demo doctors, patients, and bookings.`,
+      featured: false,
+      order: 12,
+      published: true,
+    },
+
+    // ── 14. LearnHub — Online Learning Platform (LMS) ──────────────────────────────────────────
+    {
+      slug: "learnhub",
+      title: "LearnHub — Online Learning Platform (LMS)",
+      oneLiner:
+        "Full-stack LMS where students enroll, watch lessons, and unlock server-graded quizzes at 100% progress, and instructors build courses and track enrollment analytics.",
+      role: "Personal project — sole architect & developer",
+      tags: [
+        "Full-stack",
+        "LMS",
+        "Server Actions",
+        "Auth & RBAC",
+        "Data Modeling",
+        "EdTech",
+        "Type Safety",
+      ],
+      stack: [
+        "Next.js 16",
+        "React 19",
+        "TypeScript",
+        "Prisma 7",
+        "SQLite (libSQL)",
+        "Tailwind CSS v4",
+        "shadcn/ui",
+        "Zod",
+        "jose (JWT)",
+      ],
+      metric:
+        "~35 typed Server Actions across 7 domain modules, 9-model Prisma schema, 13 routes — zero REST endpoints",
+      overview:
+        "LearnHub is a two-sided learning platform built end-to-end on Next.js 16. Students browse a filterable catalog, enroll in free or (mock-)paid courses, work through video lessons in a curriculum player with per-lesson completion tracking, and take an end-of-course quiz that unlocks only at 100% progress and is graded entirely on the server. Instructors get a role-gated area with a course builder (modules, lessons, quiz questions/options), a publish toggle, and a 30-day enrollment analytics chart. It is a personal portfolio project with deliberately honest scope: payments are mocked and data comes from a rich seed script.",
+      contribution:
+        "Sole architect and developer. Designed the 9-model Prisma schema with DB-level invariants (unique enrollments, one quiz per course, idempotent progress upserts) and composite indexes matching the catalog's exact filter queries; built the entire backend as ~35 typed Server Actions with Zod validation and a discriminated-union error contract; wrote a custom JWT auth layer (jose, httpOnly cookie, bcrypt) enforced both at the edge proxy and inside every action; implemented app-level row security so all 18 instructor mutations resolve ownership up the relation chain; and built the full UI with Tailwind v4, shadcn/ui, react-hook-form, and Recharts.",
+      body: `LearnHub is a full-stack learning management system I built solo to explore how far the modern Next.js server-first model can go without a conventional API layer. There are no REST route handlers at all: the complete backend surface is roughly 35 typed Server Actions organized into seven domain modules (auth, courses, enrollment, learning, quiz, instructor, dashboard), giving end-to-end TypeScript types from Prisma rows to component props with no DTO drift.
+
+### Data model
+The Prisma schema has 9 models — User, Course, Module, Lesson, Enrollment, LessonProgress, Quiz, Question, Option, QuizAttempt — with invariants pushed into the database where possible: a unique (userId, courseId) pair makes double-enrollment impossible, a unique courseId enforces one quiz per course, and progress writes are idempotent upserts. Composite indexes (published+category, published+level, published+pricePaise) mirror the catalog's exact filter combinations. Progress is never stored as a percentage; a single computeProgress() helper always derives it from completed-lesson rows, so it cannot drift when instructors edit curricula. Money is integer paise with en-IN formatting — no floating-point currency.
+
+### Correctness details
+The quiz engine is the standout: correct answers (isCorrect) are never serialized to the client — the student-facing query selects only option id and text, and grading re-fetches answers server-side into a questionId → Set<optionId> map. The quiz itself stays locked until every lesson is complete, enforced in the action layer, with retakes allowed and best attempts surfaced on the dashboard.
+
+### Auth and authorization
+Sessions are custom-built (no NextAuth): jose HS256 JWTs in an httpOnly cookie, bcrypt work factor 12, and a startup guard on secret length. Enforcement is deliberately two-tier — a stateless edge proxy (Next 16's proxy.ts, the middleware replacement) handles role-based redirects without a DB round-trip, while every server action independently re-checks requireUser/requireRole. Instructor mutations add application-level row security: ownership resolvers walk each entity up to course.instructorId and throw on mismatch.
+
+### Honest scope
+This is a portfolio project, not production SaaS: payments are mocked at a clearly-marked seam, the database is SQLite via Prisma 7's libSQL driver adapter (with a documented Turso/Postgres path), demo content comes from a ~1,000-line seed, and there is no automated test suite. What it demonstrates is architecture, data-modeling, and security discipline at around 9,200 lines of hand-written TypeScript.`,
+      featured: false,
+      order: 13,
+      published: true,
+    },
+
+    // ── 15. NestFinder — Real Estate Listing Marketplace ──────────────────────────────────────────
+    {
+      slug: "nestfinder",
+      title: "NestFinder — Real Estate Listing Marketplace",
+      oneLiner:
+        "A full-stack property portal where buyers search, favourite, and enquire on listings while agents manage them from an analytics dashboard — built on Next.js 16 with zero API routes.",
+      role: "Personal project — sole architect & developer",
+      tags: [
+        "Full-Stack",
+        "Server Actions",
+        "Auth & RBAC",
+        "Database Design",
+        "Marketplace",
+        "India-Localised",
+        "Server Components",
+      ],
+      stack: [
+        "Next.js 16",
+        "React 19",
+        "TypeScript",
+        "Prisma 7",
+        "SQLite (libSQL)",
+        "Tailwind CSS v4",
+        "shadcn/ui",
+        "Zod",
+        "Recharts",
+      ],
+      metric:
+        "5 Prisma models · 11 routes · 21 server actions · 0 API endpoints",
+      overview:
+        "NestFinder is a real-estate marketplace in the 99acres mould, localised for India: buyers and renters browse properties with URL-driven filters (buy/rent, type, city, price range, bedrooms, text search), view image galleries with a lightbox and keyless OpenStreetMap embeds, save favourites, and send enquiries — even as guests. Agents get a dashboard with KPI stats and a 30-day enquiry trend chart, full listing CRUD with image ordering, and an enquiry inbox with a NEW → CONTACTED → CLOSED workflow. All prices are stored as integer paise and rendered with lakh/crore formatting.",
+      contribution:
+        "I built everything solo: the 5-model Prisma 7 schema with 24 indexes (including composite indexes matched to real filter combinations), a from-scratch JWT auth system (jose HS256 in an httpOnly cookie, bcrypt-12, generic login errors), Next 16 proxy.ts edge guards with role-based redirects, 21 Zod-validated server actions with a uniform ActionResult contract and agentId-scoped queries as app-level row security, the full UI (43 components on Tailwind v4 + shadcn/ui with Suspense streaming and skeletons), the Recharts dashboard, and an 804-line seed with 15 realistic listings across 5 Indian cities.",
+      body: `## Architecture
+
+NestFinder is a Next.js 16 App Router application with **no REST layer at all**: 11 pages talk to the database through 21 typed Server Actions, called directly from Server Components for reads and client components for mutations. Every boundary is typed end-to-end and validated with Zod on the server. Pages are Server Components by default — only ~30 of 54 tsx files opt into \`"use client"\`, where interactivity (gallery lightbox, filter bar, forms) demands it — and search results stream inside \`<Suspense>\` with skeleton fallbacks.
+
+Data lives in a 5-model Prisma 7 schema (User, Property, PropertyImage, Favorite, Enquiry) on the new driver-adapter architecture: \`@prisma/adapter-libsql\` over SQLite locally, with the PostgreSQL swap path documented in \`prisma.config.ts\`. The Property model carries 13 indexes, five of them composite (\`[status, city]\`, \`[city, listingType, propertyType]\`, …) mirroring the browse page's actual query shapes.
+
+## Key Engineering Decisions
+
+- **Auth from scratch, defense in depth.** A jose-signed HS256 JWT in an httpOnly cookie; Next 16's \`proxy.ts\` (the middleware replacement) enforces route access at the edge with role-based redirects and \`returnUrl\`, while every server action independently re-checks \`requireUser()\`/\`requireRole()\` and scopes queries to the authenticated agent's \`agentId\` — explicit app-level row security, since SQLite has none.
+- **Integer money.** Prices are paise-denominated \`Int\` columns; en-IN \`Intl.NumberFormat\` plus custom lakh/crore compaction (\`₹1.2 Cr\`) keeps floating-point out of currency entirely.
+- **URL-driven search.** Filter, sort, and pagination state lives in query params, so every result set is shareable and server-rendered.
+- **Deliberate edge cases.** Guest enquiries via a nullable FK with \`SetNull\`; sold/rented listings stay viewable by slug with a status badge; favourites survive status changes; slugs are made collision-proof with an id suffix; the enquiry chart fills zero-days for a gapless 30-day axis.
+- **Zero-key externals.** OpenStreetMap iframe embeds and placeholder image hosts mean the repo runs on \`pnpm install\`, migrate, seed, dev — no API keys.
+
+## Honest Notes
+
+This is a portfolio project, not a production service: one migration, no automated tests or CI, demo image hosts, and SQLite in development. Its purpose is demonstrating current-generation Next.js architecture — Server Actions as the entire backend surface, RSC-first rendering, Prisma 7's new setup — done cleanly, end to end, by one person.`,
+      featured: false,
+      order: 14,
+      published: true,
+    },
+
+    // ── 16. ShopSphere — E-Commerce Store + Admin Dashboard ──────────────────────────────────────────
+    {
+      slug: "shopsphere",
+      title: "ShopSphere — E-Commerce Store + Admin Dashboard",
+      oneLiner:
+        "Full-stack Next.js 16 online store with a transactional, oversell-proof checkout and an admin dashboard for inventory, orders, and sales analytics.",
+      role: "Personal project — sole architect & developer",
+      tags: [
+        "e-commerce",
+        "full-stack",
+        "server-actions",
+        "transactions",
+        "auth",
+        "admin-dashboard",
+        "analytics",
+      ],
+      stack: [
+        "Next.js 16",
+        "React 19",
+        "TypeScript",
+        "Prisma 7",
+        "SQLite (libSQL)",
+        "Tailwind CSS v4",
+        "shadcn/ui",
+        "Recharts",
+        "Zod",
+      ],
+      metric:
+        "8-model Prisma schema, 12 routes, ~24 typed server actions (zero REST endpoints), ~8,000 lines of TypeScript",
+      overview:
+        "ShopSphere is a full-stack e-commerce app with two surfaces in one Next.js 16 codebase: a customer storefront (searchable, filterable catalog, product detail with gallery and related items, DB-backed cart, checkout, order history) and a role-guarded admin dashboard (product/inventory CRUD, an order-status pipeline, and sales analytics with KPI cards and revenue charts). It was built to demonstrate correct commerce engineering — integer-paise money, snapshot-accurate order history, and a transactional checkout that can never oversell — with payments mocked behind a single-file gateway seam designed for a drop-in Stripe/Razorpay swap.",
+      contribution:
+        "Sole architect and developer of everything: the 8-model Prisma 7 schema (with 20+ deliberate indexes and FK Restrict rules), the entire data layer as ~24 Zod-validated typed server actions with no REST routes, custom jose-JWT auth with role-based access enforced at both the Next.js 16 edge proxy and inside every mutating action, the three-phase transactional checkout, the storefront UI (Tailwind v4 + shadcn/ui, dark mode), the admin analytics dashboard (Recharts), and an 825-line deterministic seed script with demo users, catalog, and orders.",
+      body: `## What it is
+
+ShopSphere is a full-stack online store: customers browse a catalog with search, category and price filters, and four sort modes; manage a persistent cart; and check out with a shipping form and a mock Stripe/Razorpay payment choice. Admins get a separate role-guarded dashboard for product and inventory CRUD, an order-status pipeline (PENDING → PAID → SHIPPED → DELIVERED / CANCELLED), and sales analytics.
+
+## The interesting engineering
+
+**Transactional checkout that never oversells.** \`placeOrder\` runs in three phases: inside a Prisma \`$transaction\`, stock is re-validated for every cart line and the Order, OrderItems, and Payment rows are created as PENDING; the (mock) gateway call then runs *outside* the transaction — exactly where a real async payment call must sit; finally an atomic batch transaction flips Order and Payment to PAID, decrements stock per line, and clears the cart, all-or-nothing.
+
+**Data integrity by design.** All money is integer paise — no floating-point currency anywhere. OrderItems store name and unit-price snapshots taken at purchase time, so history survives renames and repricing. Products referenced by orders are protected by \`onDelete: Restrict\`, and the admin delete action catches Prisma's P2003 error and returns a friendly "has existing orders — set stock to 0" message. The cart is one UPSERT row per (user, product), enforced by a unique constraint.
+
+**Server actions instead of a REST layer.** The entire API surface is ~24 typed server actions. Every action validates input with Zod (cuid IDs, quantity bounds, price constraints) and returns a discriminated-union \`ActionResult\` — never a thrown error — with field errors mapping directly onto React Hook Form.
+
+**Defense-in-depth auth.** Custom JWT sessions (jose HS256 in an httpOnly cookie, bcrypt work factor 12) are enforced twice: a Next.js 16 edge proxy handles redirects, while every mutating action independently calls \`requireUser\`/\`requireRole\`. Roles are assigned server-side only, and login errors are enumeration-safe.
+
+**Admin analytics.** KPI cards computed from seven parallel Prisma aggregates, a zero-filled daily revenue series rendered with Recharts, and a \`groupBy\` order-status breakdown.
+
+## Honest scope
+
+A personal portfolio project by a sole developer. Payments are mocked behind a single-file provider seam; the database is SQLite via Prisma 7's libSQL driver adapter, swappable to PostgreSQL for production; there is no automated test suite.`,
+      featured: false,
+      order: 15,
+      published: true,
+    },
   ];
 
   for (const project of projects) {
@@ -1276,7 +1638,9 @@ async function seedMedia(): Promise<void> {
   await prisma.media.deleteMany({
     where: { OR: [{ ownerType: null }, { ownerType: { not: "section" } }] },
   });
-  console.log("  ✓ Media (non-section rows cleared — upload real assets via Cloudinary)");
+  console.log(
+    "  ✓ Media (non-section rows cleared — upload real assets via Cloudinary)",
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1284,51 +1648,55 @@ async function seedMedia(): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function seedConfig(): Promise<void> {
-  const sets: { key: string; label: string; items: { value: string; label: string }[] }[] = [
+  const sets: {
+    key: string;
+    label: string;
+    items: { value: string; label: string }[];
+  }[] = [
     {
-      key: 'contact_link_types',
-      label: 'Contact link types',
+      key: "contact_link_types",
+      label: "Contact link types",
       items: [
-        { value: 'email', label: 'Email' },
-        { value: 'phone', label: 'Phone' },
-        { value: 'website', label: 'Website' },
-        { value: 'linkedin', label: 'LinkedIn' },
-        { value: 'github', label: 'GitHub' },
-        { value: 'twitter', label: 'X (Twitter)' },
-        { value: 'instagram', label: 'Instagram' },
-        { value: 'youtube', label: 'YouTube' },
-        { value: 'medium', label: 'Medium' },
-        { value: 'dribbble', label: 'Dribbble' },
-        { value: 'telegram', label: 'Telegram' },
-        { value: 'resume', label: 'Resume / CV' },
+        { value: "email", label: "Email" },
+        { value: "phone", label: "Phone" },
+        { value: "website", label: "Website" },
+        { value: "linkedin", label: "LinkedIn" },
+        { value: "github", label: "GitHub" },
+        { value: "twitter", label: "X (Twitter)" },
+        { value: "instagram", label: "Instagram" },
+        { value: "youtube", label: "YouTube" },
+        { value: "medium", label: "Medium" },
+        { value: "dribbble", label: "Dribbble" },
+        { value: "telegram", label: "Telegram" },
+        { value: "resume", label: "Resume / CV" },
       ],
     },
     {
-      key: 'social_link_types',
-      label: 'Social link types',
+      key: "social_link_types",
+      label: "Social link types",
       items: [
-        { value: 'website', label: 'Website' },
-        { value: 'linkedin', label: 'LinkedIn' },
-        { value: 'github', label: 'GitHub' },
-        { value: 'twitter', label: 'X (Twitter)' },
-        { value: 'instagram', label: 'Instagram' },
-        { value: 'youtube', label: 'YouTube' },
-        { value: 'medium', label: 'Medium' },
-        { value: 'dribbble', label: 'Dribbble' },
-        { value: 'telegram', label: 'Telegram' },
-        { value: 'email', label: 'Email' },
+        { value: "website", label: "Website" },
+        { value: "linkedin", label: "LinkedIn" },
+        { value: "github", label: "GitHub" },
+        { value: "twitter", label: "X (Twitter)" },
+        { value: "instagram", label: "Instagram" },
+        { value: "youtube", label: "YouTube" },
+        { value: "medium", label: "Medium" },
+        { value: "dribbble", label: "Dribbble" },
+        { value: "telegram", label: "Telegram" },
+        { value: "email", label: "Email" },
       ],
     },
     {
-      key: 'skill_groups',
-      label: 'Skill groups',
+      key: "skill_groups",
+      label: "Skill groups",
       items: [
-        { value: 'LANGUAGES', label: 'Languages' },
-        { value: 'FRONTEND', label: 'Frontend' },
-        { value: 'BACKEND', label: 'Backend' },
-        { value: 'DATA', label: 'Data' },
-        { value: 'CLOUD_DEVOPS', label: 'Cloud / DevOps' },
-        { value: 'AI', label: 'AI' },
+        { value: "LANGUAGES", label: "Languages" },
+        { value: "FRONTEND", label: "Frontend" },
+        { value: "BACKEND", label: "Backend" },
+        { value: "DATA", label: "Data" },
+        { value: "CLOUD_DEVOPS", label: "Cloud / DevOps" },
+        { value: "AI", label: "AI" },
       ],
     },
   ];
@@ -1378,7 +1746,7 @@ async function seedPages(createdById: string): Promise<void> {
       title: "Projects",
       metaTitle: "Production Systems",
       metaDescription:
-        "8 shipped platforms across fintech, AI hiring, real-estate, insurance, and meeting automation — mostly full-stack ownership at Humancloud Technologies.",
+        "9 professional platforms shipped at Humancloud Technologies — fintech, AI hiring, real-estate, insurance, meeting automation — plus 7 self-driven personal builds across e-commerce, healthcare, ed-tech, CRM + AI, loyalty systems, and biomechanics.",
       navLabel: "Work",
       navOrder: 1,
       showInNav: true,
@@ -1413,8 +1781,7 @@ async function seedPages(createdById: string): Promise<void> {
       slug: "education",
       title: "Education",
       metaTitle: "Education",
-      metaDescription:
-        "Degrees, institutions, and academic background.",
+      metaDescription: "Degrees, institutions, and academic background.",
       navLabel: "Education",
       navOrder: 4,
       showInNav: true,
@@ -1513,9 +1880,21 @@ async function seedPages(createdById: string): Promise<void> {
             "From a bank-grade Monte Carlo engine to multi-tenant SaaS platforms — I ship across TypeScript, Go, Python & Java. 2+ years turning hard problems into shipped products at Humancloud Technologies.",
           buttons: [
             { label: "View Résumé", href: "/resume.pdf", style: "primary" },
-            { label: "GitHub", href: "https://github.com/rohithumancloud", style: "ghost" },
-            { label: "LinkedIn", href: "https://linkedin.com/in/rohitbmalviya", style: "ghost" },
-            { label: "Email", href: "mailto:rohitbmalviya@gmail.com", style: "ghost" },
+            {
+              label: "GitHub",
+              href: "https://github.com/rohithumancloud",
+              style: "ghost",
+            },
+            {
+              label: "LinkedIn",
+              href: "https://linkedin.com/in/rohitbmalviya",
+              style: "ghost",
+            },
+            {
+              label: "Email",
+              href: "mailto:rohitbmalviya@gmail.com",
+              style: "ghost",
+            },
           ],
           metrics: [
             { value: "8", label: "production platforms" },
@@ -1542,13 +1921,21 @@ async function seedPages(createdById: string): Promise<void> {
         type: "SKILLS",
         order: 2,
         enabled: true,
-        data: { heading: "02 — skills", source: "skills-table", cta: { label: "View all skills", href: "/skills" } } satisfies Prisma.InputJsonValue,
+        data: {
+          heading: "02 — skills",
+          source: "skills-table",
+          cta: { label: "View all skills", href: "/skills" },
+        } satisfies Prisma.InputJsonValue,
       },
       {
         type: "EXPERIENCE",
         order: 3,
         enabled: true,
-        data: { heading: "03 — experience", source: "experience-table", cta: { label: "View all experience", href: "/experience" } } satisfies Prisma.InputJsonValue,
+        data: {
+          heading: "03 — experience",
+          source: "experience-table",
+          cta: { label: "View all experience", href: "/experience" },
+        } satisfies Prisma.InputJsonValue,
       },
       {
         type: "FEATURED_PROJECTS",
@@ -1575,7 +1962,11 @@ async function seedPages(createdById: string): Promise<void> {
         type: "ACHIEVEMENTS",
         order: 7,
         enabled: true,
-        data: { heading: "07 — recognition", source: "achievements-table", cta: { label: "View all achievements", href: "/achievements" } } satisfies Prisma.InputJsonValue,
+        data: {
+          heading: "07 — recognition",
+          source: "achievements-table",
+          cta: { label: "View all achievements", href: "/achievements" },
+        } satisfies Prisma.InputJsonValue,
       },
       {
         type: "EDUCATION",
@@ -1600,7 +1991,8 @@ async function seedPages(createdById: string): Promise<void> {
         enabled: true,
         data: {
           heading: "Let's build something.",
-          blurb: "Open to senior full-stack / backend / fintech roles. The fastest way to reach me is email — I reply quickly.",
+          blurb:
+            "Open to senior full-stack / backend / fintech roles. The fastest way to reach me is email — I reply quickly.",
           showForm: false,
           email: "rohitbmalviya@gmail.com",
           socials: {
@@ -1644,7 +2036,7 @@ async function seedPages(createdById: string): Promise<void> {
       source: "projects",
       heading: "Production Systems",
       paragraph:
-        "8 shipped platforms across fintech, AI hiring, real-estate, insurance, and meeting automation — mostly full-stack ownership at Humancloud Technologies.",
+        "9 professional platforms shipped at Humancloud Technologies — fintech, AI hiring, real-estate, insurance, meeting automation — plus 7 self-driven personal builds across e-commerce, healthcare, ed-tech, CRM + AI, loyalty systems, and biomechanics.",
     },
     {
       slug: "blog",
@@ -1682,7 +2074,9 @@ async function seedPages(createdById: string): Promise<void> {
   ];
 
   for (const lb of listBlocks) {
-    const page = await prisma.page.findUniqueOrThrow({ where: { slug: lb.slug } });
+    const page = await prisma.page.findUniqueOrThrow({
+      where: { slug: lb.slug },
+    });
     const count = await prisma.section.count({ where: { pageId: page.id } });
     if (count === 0) {
       await prisma.section.create({
