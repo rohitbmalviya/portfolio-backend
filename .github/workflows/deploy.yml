@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────
+#  Deploy — portfolio-backend (MANUAL)
+#  Run from GitHub → Actions → "Deploy" → "Run workflow".
+#  Triggers Render's deploy hook, which builds & deploys the
+#  latest commit on main. Auto-deploy on push is disabled
+#  (render.yaml: autoDeployTrigger: off).
+#
+#  Setup (once): Render dashboard → service → Settings →
+#  Deploy Hook → copy the URL → GitHub repo → Settings →
+#  Secrets and variables → Actions → new secret:
+#    RENDER_DEPLOY_HOOK_URL = <that URL>
+# ─────────────────────────────────────────────────────────────
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL secret is not set"; exit 1
+          fi
+          curl -fsS -X POST "$HOOK"
+          echo "✅ Render deploy triggered — watch progress in the Render dashboard."

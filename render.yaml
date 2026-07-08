@@ -23,7 +23,9 @@ services:
     buildCommand: npm ci --include=dev && npx prisma generate && npm run build
     startCommand: npx prisma migrate deploy && node dist/main
     healthCheckPath: /api/health
-    autoDeployTrigger: commit # deploy on every push to the connected branch (main)
+    # Deploys are MANUAL: triggered from the GitHub Actions "Deploy" workflow
+    # (workflow_dispatch → Render deploy hook). No deploy on push.
+    autoDeployTrigger: off
     envVars:
       - key: NODE_ENV
         value: production
