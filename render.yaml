@@ -17,13 +17,19 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildCommand: npm ci && npx prisma generate && npm run build
+    # --include=dev: NODE_ENV=production makes `npm ci` skip devDependencies,
+    # but the build needs them (@nestjs/cli provides the `nest` command,
+    # plus typescript, prisma CLI, and ts-node for one-off seeding).
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
     startCommand: npx prisma migrate deploy && node dist/main
     healthCheckPath: /api/health
     autoDeployTrigger: commit # deploy on every push to the connected branch (main)
     envVars:
       - key: NODE_ENV
         value: production
+      # Pin Node to match CI + local (Render defaults to the latest, e.g. 24)
+      - key: NODE_VERSION
+        value: "20"
       # ── Database (Neon) — use the DIRECT (non-pooled) connection string:
       #    a single Render instance holds few connections, and Prisma
       #    migrations require a direct connection anyway.
