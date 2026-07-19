@@ -26,7 +26,9 @@ export class BlogController {
 
   // ── GET /api/blog — public (published only) ──────────────────────────────
   @Get()
-  @ApiOperation({ summary: 'List blog posts. Public: published, newest first. ?admin=true for all.' })
+  @ApiOperation({
+    summary: 'List blog posts. Public: published, newest first. ?admin=true for all.',
+  })
   @ApiQuery({ name: 'admin', required: false, type: Boolean })
   async findAll(@Query('admin') admin?: string) {
     const data =
@@ -49,10 +51,7 @@ export class BlogController {
   @Get(':slug')
   @ApiOperation({ summary: 'Get a blog post by slug. Pass ?admin=true for unpublished.' })
   @ApiQuery({ name: 'admin', required: false, type: Boolean })
-  async findOne(
-    @Param('slug') slug: string,
-    @Query('admin') admin?: string,
-  ) {
+  async findOne(@Param('slug') slug: string, @Query('admin') admin?: string) {
     const data =
       admin === 'true'
         ? await this.blogService.findBySlugAdmin(slug)
@@ -65,10 +64,7 @@ export class BlogController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create a blog post' })
-  async create(
-    @Body() dto: CreateBlogPostDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async create(@Body() dto: CreateBlogPostDto, @CurrentUser() user: AdminUser) {
     return { data: await this.blogService.create(dto, user.id) };
   }
 
@@ -77,10 +73,7 @@ export class BlogController {
   @Patch(':id/publish')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Toggle blog post published status' })
-  async togglePublished(
-    @Param('id') id: string,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async togglePublished(@Param('id') id: string, @CurrentUser() user: AdminUser) {
     return { data: await this.blogService.togglePublished(id, user.id) };
   }
 

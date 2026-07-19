@@ -5,16 +5,13 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiCookieAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
-import { Response } from 'express';
+import { ApiBearerAuth, ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -25,27 +22,48 @@ import { AdminUser } from '@prisma/client';
 import {
   parseDurationMs,
   DEFAULT_ACCESS_EXPIRES_IN,
+  DEFAULT_REFRESH_EXPIRES_IN,
 } from '../../common/utils/duration.util';
 
-// Access-token cookie name (constant so both login + logout use the same name)
+// Cookie names (constants so login/refresh/logout all agree on the same names)
 const ACCESS_TOKEN_COOKIE = 'access_token';
+const REFRESH_TOKEN_COOKIE = 'refresh_token';
 
 // Cookie options shared across set/clear.
-// maxAge is derived from JWT_EXPIRES_IN so the cookie lifetime can never drift
-// from the token lifetime — both read the same env var with the same default.
+// maxAge is derived from JWT_EXPIRES_IN / JWT_REFRESH_EXPIRES_IN so the cookie
+// lifetime can never drift from the token lifetime — both read the same env
+// vars with the same defaults.
 //
 // In production the frontend (Vercel) and this API (Render) live on DIFFERENT
-// sites, so the auth cookie must be SameSite=None + Secure or browsers will
-// refuse to send it on cross-site fetches (login would silently break).
+// sites, so the auth cookies must be SameSite=None + Secure or browsers will
+// refuse to send them on cross-site fetches (login would silently break).
 // Local dev is same-site over http, so Lax + non-secure keeps working there.
 const isProduction = process.env['NODE_ENV'] === 'production';
-const cookieOptions = {
+const baseCookieOptions = {
   httpOnly: true,
   sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
   secure: isProduction,
+};
+
+const accessCookieOptions = {
+  ...baseCookieOptions,
   path: '/',
   maxAge: parseDurationMs(process.env['JWT_EXPIRES_IN'] ?? DEFAULT_ACCESS_EXPIRES_IN),
 };
+
+// Scoped to /api/auth — the browser only sends the refresh cookie to auth
+// endpoints (refresh/logout), never to unrelated API routes.
+const refreshCookieOptions = {
+  ...baseCookieOptions,
+  path: '/api/auth',
+  maxAge: parseDurationMs(process.env['JWT_REFRESH_EXPIRES_IN'] ?? DEFAULT_REFRESH_EXPIRES_IN),
+};
+
+/** Set both auth cookies on the response — used by both login and refresh. */
+function setAuthCookies(res: Response, accessToken: string, refreshToken: string): void {
+  res.cookie(ACCESS_TOKEN_COOKIE, accessToken, accessCookieOptions);
+  res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, refreshCookieOptions);
+}
 
 @ApiTags('auth')
 @Controller('auth')
@@ -60,14 +78,11 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Admin login — returns JWT in both cookie and body' })
-  async login(
-    @Body() dto: LoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const { user, tokens } = await this.authService.login(dto);
 
-    // Set the access token as an httpOnly cookie
-    res.cookie(ACCESS_TOKEN_COOKIE, tokens.accessToken, cookieOptions);
+    // Set both the access and refresh tokens as httpOnly cookies
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
     return {
       data: {
@@ -91,17 +106,31 @@ export class AuthController {
   }
 
   // ── POST /api/auth/refresh ───────────────────────────────────────────────
+  /**
+   * Reads the refresh token from the `refresh_token` httpOnly cookie first
+   * (the primary flow for the Next.js admin), falling back to the request
+   * body (kept for Swagger/API clients that can't rely on cookies).
+   */
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Rotate access token using a refresh token' })
+  @ApiOperation({ summary: 'Rotate access + refresh tokens using a refresh token' })
   async refresh(
     @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const tokens = await this.authService.refresh(dto.refreshToken);
+    const rawRefreshToken =
+      (req.cookies as Record<string, string> | undefined)?.[REFRESH_TOKEN_COOKIE] ??
+      dto.refreshToken;
 
-    // Re-set the cookie with the fresh access token
-    res.cookie(ACCESS_TOKEN_COOKIE, tokens.accessToken, cookieOptions);
+    if (!rawRefreshToken) {
+      throw new UnauthorizedException('Refresh token is missing.');
+    }
+
+    const tokens = await this.authService.refresh(rawRefreshToken);
+
+    // Re-set both cookies with the freshly rotated tokens
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
     return {
       data: {
@@ -114,12 +143,14 @@ export class AuthController {
   // ── POST /api/auth/logout ────────────────────────────────────────────────
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Clear the auth cookie (logout)' })
+  @ApiOperation({ summary: 'Clear the auth cookies (logout)' })
   logout(@Res({ passthrough: true }) res: Response) {
     // Options must match the ones used on set (minus maxAge) or the browser
     // will not clear the cookie.
-    const { maxAge: _maxAge, ...clearOptions } = cookieOptions;
-    res.clearCookie(ACCESS_TOKEN_COOKIE, clearOptions);
+    const { maxAge: _accessMaxAge, ...accessClearOptions } = accessCookieOptions;
+    const { maxAge: _refreshMaxAge, ...refreshClearOptions } = refreshCookieOptions;
+    res.clearCookie(ACCESS_TOKEN_COOKIE, accessClearOptions);
+    res.clearCookie(REFRESH_TOKEN_COOKIE, refreshClearOptions);
     return { data: { message: 'Logged out successfully.' } };
   }
 }

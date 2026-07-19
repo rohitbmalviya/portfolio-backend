@@ -13,7 +13,10 @@ export class ComposeContactDto {
   @MaxLength(100)
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Email subject line', example: 'Following up on your enquiry' })
+  @ApiPropertyOptional({
+    description: 'Email subject line',
+    example: 'Following up on your enquiry',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(200)

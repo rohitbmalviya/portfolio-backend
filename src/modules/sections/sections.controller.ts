@@ -27,13 +27,12 @@ export class SectionsController {
 
   // ── GET /api/sections?pageId=xxx ─────────────────────────────────────────
   @Get()
-  @ApiOperation({ summary: 'List sections for a page. Admin can pass ?admin=true to include disabled.' })
+  @ApiOperation({
+    summary: 'List sections for a page. Admin can pass ?admin=true to include disabled.',
+  })
   @ApiQuery({ name: 'pageId', required: true })
   @ApiQuery({ name: 'admin', required: false, type: Boolean })
-  async findByPage(
-    @Query('pageId') pageId: string,
-    @Query('admin') admin?: string,
-  ) {
+  async findByPage(@Query('pageId') pageId: string, @Query('admin') admin?: string) {
     return { data: await this.sectionsService.findByPage(pageId, admin === 'true') };
   }
 
@@ -49,10 +48,7 @@ export class SectionsController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create a section on a page' })
-  async create(
-    @Body() dto: CreateSectionDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async create(@Body() dto: CreateSectionDto, @CurrentUser() user: AdminUser) {
     return { data: await this.sectionsService.create(dto, user.id) };
   }
 
@@ -61,10 +57,7 @@ export class SectionsController {
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder sections (batch update order values)' })
-  async reorder(
-    @Body() dto: ReorderSectionsDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async reorder(@Body() dto: ReorderSectionsDto, @CurrentUser() user: AdminUser) {
     return { data: await this.sectionsService.reorder(dto, user.id) };
   }
 
@@ -73,10 +66,7 @@ export class SectionsController {
   @Patch(':id/toggle')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Toggle section enabled/disabled' })
-  async toggleEnabled(
-    @Param('id') id: string,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async toggleEnabled(@Param('id') id: string, @CurrentUser() user: AdminUser) {
     return { data: await this.sectionsService.toggleEnabled(id, user.id) };
   }
 

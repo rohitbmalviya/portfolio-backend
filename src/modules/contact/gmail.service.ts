@@ -1,11 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { google, gmail_v1 } from 'googleapis';
 import { ContactThread } from '@prisma/client';
-import {
-  ReplySignature,
-  notificationEmailHtml,
-  replyEmailHtml,
-} from './email-templates';
+import { ReplySignature, notificationEmailHtml, replyEmailHtml } from './email-templates';
 
 export type { ReplySignature };
 
@@ -87,8 +83,7 @@ export class GmailService {
     const boundary = `_PART_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
     /** Wrap a base64 string at 76 characters per line (RFC 2045 §6.8). */
-    const wrap76 = (b64: string): string =>
-      (b64.match(/.{1,76}/g) ?? [b64]).join('\r\n');
+    const wrap76 = (b64: string): string => (b64.match(/.{1,76}/g) ?? [b64]).join('\r\n');
 
     const plainB64 = wrap76(Buffer.from(plainText, 'utf-8').toString('base64'));
     const htmlB64 = wrap76(Buffer.from(htmlText, 'utf-8').toString('base64'));
@@ -192,8 +187,7 @@ export class GmailService {
       return { id: '', threadId: '' };
     }
 
-    const adminUrl =
-      process.env.ADMIN_MESSAGES_URL ?? 'http://localhost:3000/admin/messages';
+    const adminUrl = process.env.ADMIN_MESSAGES_URL ?? 'http://localhost:3000/admin/messages';
     const receivedAt = new Date();
     const subject = `New portfolio message from ${thread.name}`;
 
@@ -424,8 +418,7 @@ export class GmailService {
       .filter((msg) => msg.id != null)
       .map((msg) => {
         const headers = msg.payload?.headers ?? [];
-        const fromHeader =
-          headers.find((h) => h.name?.toLowerCase() === 'from')?.value ?? '';
+        const fromHeader = headers.find((h) => h.name?.toLowerCase() === 'from')?.value ?? '';
         return {
           gmailMessageId: msg.id as string,
           fromEmail: this.extractEmail(fromHeader),

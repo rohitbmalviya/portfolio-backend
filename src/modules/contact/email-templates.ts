@@ -99,7 +99,20 @@ function initials(name: string): string {
  * Format a Date as "28 Jun 2026 · 1:00 PM" (UTC, no server-timezone surprise).
  */
 function formatEmailDate(d: Date): string {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   const day = String(d.getUTCDate()).padStart(2, '0');
   const month = months[d.getUTCMonth()];
   const year = d.getUTCFullYear();

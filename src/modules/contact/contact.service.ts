@@ -52,8 +52,8 @@ function extractSocialUrls(socials: unknown): { github: string; linkedin: string
   // Object shape: { github: '...', linkedin: '...' }
   const obj = socials as Record<string, unknown>;
   return {
-    github: (typeof obj.github === 'string' && obj.github) ? obj.github : fallback.github,
-    linkedin: (typeof obj.linkedin === 'string' && obj.linkedin) ? obj.linkedin : fallback.linkedin,
+    github: typeof obj.github === 'string' && obj.github ? obj.github : fallback.github,
+    linkedin: typeof obj.linkedin === 'string' && obj.linkedin ? obj.linkedin : fallback.linkedin,
   };
 }
 
@@ -122,8 +122,17 @@ export class ContactService {
    *
    * createdById/updatedById intentionally left NULL — this is a visitor action,
    * not an admin action.
+   *
+   * Honeypot: `website` is a hidden field real visitors never fill in. When a
+   * bot fills it, we return the normal success response (so the bot doesn't
+   * learn it was detected) but silently skip persisting or sending anything.
    */
   async createFromWeb(dto: CreateContactDto): Promise<{ success: true }> {
+    if (dto.website && dto.website.trim().length > 0) {
+      this.logger.warn('createFromWeb: honeypot field filled — silently dropping submission');
+      return { success: true };
+    }
+
     const { name, email, subject, message } = dto;
 
     // 1. Persist thread + initial inbound message in one round-trip
@@ -233,9 +242,7 @@ export class ContactService {
         /^-{3,}\s*original message\s*-{3,}/i.test(line) ||
         /^_{5,}$/.test(line) ||
         /^on\b.*\bwrote:$/i.test(line) ||
-        (/^on\b/i.test(line) &&
-          i + 1 < lines.length &&
-          /\bwrote:$/i.test(lines[i + 1].trim()));
+        (/^on\b/i.test(line) && i + 1 < lines.length && /\bwrote:$/i.test(lines[i + 1].trim()));
       if (isQuote) {
         cut = i;
         break;
@@ -520,9 +527,7 @@ export class ContactService {
     for (const thread of threads) {
       try {
         // gmailThreadId is guaranteed non-null by the where filter above
-        const gmailMessages = await this.gmail.fetchThreadMessages(
-          thread.gmailThreadId as string,
-        );
+        const gmailMessages = await this.gmail.fetchThreadMessages(thread.gmailThreadId as string);
 
         let hasNewInbound = false;
         let latestDate: Date | null = null;

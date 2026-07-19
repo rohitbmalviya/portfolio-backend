@@ -22,8 +22,7 @@ export class CreateMediaDto {
   category?: string;
 
   @ApiPropertyOptional({
-    description:
-      'URL-safe slug of the owning entity (required for projects / blogs uploads)',
+    description: 'URL-safe slug of the owning entity (required for projects / blogs uploads)',
   })
   @IsString()
   @IsOptional()
@@ -67,7 +66,8 @@ export class CreateMediaDto {
   usage?: string;
 
   @ApiPropertyOptional({
-    description: 'Display order within the owning collection (0-based). Coerced from string because it arrives via multipart form-data.',
+    description:
+      'Display order within the owning collection (0-based). Coerced from string because it arrives via multipart form-data.',
     minimum: 0,
   })
   @Type(() => Number)

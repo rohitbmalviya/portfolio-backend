@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -32,7 +28,9 @@ export class AuthService {
 
   // ── Login ────────────────────────────────────────────────────────────────
 
-  async login(dto: LoginDto): Promise<{ user: Omit<AdminUser, 'passwordHash'>; tokens: AuthTokens }> {
+  async login(
+    dto: LoginDto,
+  ): Promise<{ user: Omit<AdminUser, 'passwordHash'>; tokens: AuthTokens }> {
     const user = await this.prisma.adminUser.findUnique({
       where: { email: dto.email },
     });

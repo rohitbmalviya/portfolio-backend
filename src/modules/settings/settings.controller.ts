@@ -1,10 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Patch,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminUser } from '@prisma/client';
 import { SettingsService } from './settings.service';
@@ -29,10 +23,7 @@ export class SettingsController {
   @Patch()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Upsert site settings (singleton)' })
-  async upsertSettings(
-    @Body() dto: UpdateSettingsDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async upsertSettings(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AdminUser) {
     return { data: await this.settingsService.upsertSettings(dto, user.id) };
   }
 }

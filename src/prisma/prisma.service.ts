@@ -6,10 +6,7 @@ import { PrismaClient } from '@prisma/client';
  * Connects on module init, disconnects on shutdown.
  */
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     await this.$connect();
   }

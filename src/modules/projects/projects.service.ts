@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
-import { Media, Project } from '@prisma/client';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Media, Prisma, Project } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -134,22 +130,29 @@ export class ProjectsService {
 
   // ── Create ───────────────────────────────────────────────────────────────
   async create(dto: CreateProjectDto, userId: string) {
+    // Friendlier pre-check message (best-effort — the P2002 catch below is
+    // the actual guarantee against the TOCTOU race between this check and
+    // the insert).
     const existing = await this.prisma.project.findUnique({ where: { slug: dto.slug } });
     if (existing) {
       throw new ConflictException(`A project with slug "${dto.slug}" already exists.`);
     }
 
-    const project = await this.prisma.project.create({
-      data: {
-        ...dto,
-        tags: dto.tags ?? [],
-        stack: dto.stack ?? [],
-        createdById: userId,
-      },
-    });
+    try {
+      const project = await this.prisma.project.create({
+        data: {
+          ...dto,
+          tags: dto.tags ?? [],
+          stack: dto.stack ?? [],
+          createdById: userId,
+        },
+      });
 
-    // Newly created — no media linked yet (deferred-upload flow)
-    return mapProject(project, []);
+      // Newly created — no media linked yet (deferred-upload flow)
+      return mapProject(project, []);
+    } catch (error) {
+      this.handleUniqueViolation(error, dto.slug);
+    }
   }
 
   // ── Update ───────────────────────────────────────────────────────────────
@@ -165,11 +168,27 @@ export class ProjectsService {
       }
     }
 
-    await this.prisma.project.update({
-      where: { id },
-      data: { ...dto, ...(userId ? { updatedById: userId } : {}) },
-    });
+    try {
+      await this.prisma.project.update({
+        where: { id },
+        data: { ...dto, ...(userId ? { updatedById: userId } : {}) },
+      });
+    } catch (error) {
+      this.handleUniqueViolation(error, dto.slug);
+    }
     return this.fetchWithMedia(id);
+  }
+
+  // ── Shared P2002 handler ─────────────────────────────────────────────────
+  private handleUniqueViolation(error: unknown, slug?: string): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new ConflictException(
+        slug
+          ? `A project with slug "${slug}" already exists.`
+          : 'A project with this value already exists.',
+      );
+    }
+    throw error;
   }
 
   // ── Feature toggle ───────────────────────────────────────────────────────

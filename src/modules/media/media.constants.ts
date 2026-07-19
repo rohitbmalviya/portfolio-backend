@@ -20,3 +20,11 @@ export const ALLOWED_MIME_TYPES = new Set([
   'image/svg+xml',
   'application/pdf', // résumé / document uploads
 ]);
+
+// ── List pagination ───────────────────────────────────────────────────────────
+
+/** Default page size when `page` is requested without an explicit `pageSize`. */
+export const DEFAULT_MEDIA_PAGE_SIZE = 20;
+
+/** Hard cap on `pageSize` to prevent unbounded result sets. */
+export const MAX_MEDIA_PAGE_SIZE = 100;

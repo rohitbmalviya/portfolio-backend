@@ -1,23 +1,18 @@
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CloudinaryProvider } from './cloudinary.provider';
+import { CreateMediaDto, UpdateMediaDto } from './dto/create-media.dto';
+import { ListMediaDto } from './dto/list-media.dto';
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { PrismaService } from "../../prisma/prisma.service";
-import { CloudinaryProvider } from "./cloudinary.provider";
-import { CreateMediaDto, UpdateMediaDto } from "./dto/create-media.dto";
-import { MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES } from "./media.constants";
+  MAX_FILE_SIZE_BYTES,
+  ALLOWED_MIME_TYPES,
+  DEFAULT_MEDIA_PAGE_SIZE,
+} from './media.constants';
 
 // Raster images we convert to WebP on upload (smaller, faster).
 // SVG (vector), GIF (animation), and PDF (document) are left untouched.
-const WEBP_CONVERTIBLE = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-]);
+const WEBP_CONVERTIBLE = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 
 /**
  * Converts an arbitrary string into a URL/path-safe slug.
@@ -28,26 +23,26 @@ const WEBP_CONVERTIBLE = new Set([
 function slugify(s: string): string {
   return s
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 // ── ownerType → stored category label ────────────────────────────────────────
 
 const OWNER_TYPE_CATEGORY: Record<string, string> = {
-  project: "Projects",
-  blog: "Blogs",
-  page: "Page",
-  section: "Section",
-  experience: "Experience",
-  education: "Education",
-  achievement: "Achievement",
-  settings: "Settings",
+  project: 'Projects',
+  blog: 'Blogs',
+  page: 'Page',
+  section: 'Section',
+  experience: 'Experience',
+  education: 'Education',
+  achievement: 'Achievement',
+  settings: 'Settings',
 };
 
 /** Derives the stored category label from the ownerType field. Falls back to 'Raw'. */
 function categoryFor(ownerType?: string): string {
-  return (ownerType && OWNER_TYPE_CATEGORY[ownerType]) ?? "Raw";
+  return (ownerType && OWNER_TYPE_CATEGORY[ownerType]) ?? 'Raw';
 }
 
 @Injectable()
@@ -61,22 +56,38 @@ export class MediaService {
   ) {}
 
   // ── List all (admin only) ────────────────────────────────────────────────
-  findAll() {
-    return this.prisma.media.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+  //
+  // Backward compatible: when `page`/`pageSize` are both absent this returns
+  // the bare array exactly as before (existing admin UI keeps working
+  // unchanged). Providing either param opts into `{ data, meta }` pagination.
+  async findAll(query?: ListMediaDto) {
+    if (!query || (query.page === undefined && query.pageSize === undefined)) {
+      return this.prisma.media.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? DEFAULT_MEDIA_PAGE_SIZE;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.media.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.media.count(),
+    ]);
+
+    return { items, meta: { total, page, pageSize } };
   }
 
   // ── Upload a file buffer to Cloudinary, persist a Media row ─────────────
-  async uploadFile(
-    file: Express.Multer.File,
-    dto: CreateMediaDto,
-    createdById?: string,
-  ) {
+  async uploadFile(file: Express.Multer.File, dto: CreateMediaDto, createdById?: string) {
     // Validate MIME type
     if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
       throw new BadRequestException(
-        `File type "${file.mimetype}" is not allowed. Allowed types: ${[...ALLOWED_MIME_TYPES].join(", ")}.`,
+        `File type "${file.mimetype}" is not allowed. Allowed types: ${[...ALLOWED_MIME_TYPES].join(', ')}.`,
       );
     }
 
@@ -87,9 +98,8 @@ export class MediaService {
       );
     }
 
-    const base =
-      this.config.get<string>("CLOUDINARY_UPLOAD_FOLDER") ?? "portfolio";
-    const nameWithoutExt = file.originalname.replace(/\.[^/.]+$/, "");
+    const base = this.config.get<string>('CLOUDINARY_UPLOAD_FOLDER') ?? 'portfolio';
+    const nameWithoutExt = file.originalname.replace(/\.[^/.]+$/, '');
     const name = slugify(nameWithoutExt);
     const toWebp = WEBP_CONVERTIBLE.has(file.mimetype);
 
@@ -108,81 +118,63 @@ export class MediaService {
     let publicId: string;
 
     switch (ownerType) {
-      case "project": {
+      case 'project': {
         const slug = entitySlug?.trim();
         if (!slug) {
-          throw new BadRequestException(
-            "entitySlug is required for project uploads",
-          );
+          throw new BadRequestException('entitySlug is required for project uploads');
         }
         publicId = `${base}/projects/${slugify(slug)}/${name}`;
         break;
       }
-      case "blog": {
+      case 'blog': {
         const slug = entitySlug?.trim();
         if (!slug) {
-          throw new BadRequestException(
-            "entitySlug is required for blog uploads",
-          );
+          throw new BadRequestException('entitySlug is required for blog uploads');
         }
         publicId = `${base}/blogs/${slugify(slug)}/${name}`;
         break;
       }
-      case "section": {
+      case 'section': {
         if (!ownerId?.trim()) {
-          throw new BadRequestException(
-            "ownerId is required for section uploads",
-          );
+          throw new BadRequestException('ownerId is required for section uploads');
         }
         publicId = `${base}/section/${ownerId}/${name}`;
         break;
       }
-      case "page": {
+      case 'page': {
         if (!ownerId?.trim()) {
-          throw new BadRequestException(
-            "ownerId is required for page uploads",
-          );
+          throw new BadRequestException('ownerId is required for page uploads');
         }
         publicId = `${base}/page/${ownerId}/og`;
         break;
       }
-      case "experience": {
+      case 'experience': {
         if (!ownerId?.trim()) {
-          throw new BadRequestException(
-            "ownerId is required for experience uploads",
-          );
+          throw new BadRequestException('ownerId is required for experience uploads');
         }
         publicId = `${base}/experience/${ownerId}/logo`;
         break;
       }
-      case "education": {
+      case 'education': {
         if (!ownerId?.trim()) {
-          throw new BadRequestException(
-            "ownerId is required for education uploads",
-          );
+          throw new BadRequestException('ownerId is required for education uploads');
         }
         publicId = `${base}/education/${ownerId}/logo`;
         break;
       }
-      case "achievement": {
+      case 'achievement': {
         if (!ownerId?.trim()) {
-          throw new BadRequestException(
-            "ownerId is required for achievement uploads",
-          );
+          throw new BadRequestException('ownerId is required for achievement uploads');
         }
         publicId = `${base}/achievement/${ownerId}/image`;
         break;
       }
-      case "settings": {
+      case 'settings': {
         if (!usage?.trim()) {
-          throw new BadRequestException(
-            "usage is required for settings uploads",
-          );
+          throw new BadRequestException('usage is required for settings uploads');
         }
-        if (usage !== "resume" && usage !== "og") {
-          throw new BadRequestException(
-            'usage must be "resume" or "og" for settings uploads',
-          );
+        if (usage !== 'resume' && usage !== 'og') {
+          throw new BadRequestException('usage must be "resume" or "og" for settings uploads');
         }
         publicId = `${base}/settings/${usage}`;
         break;
@@ -194,16 +186,16 @@ export class MediaService {
       }
     }
 
-    const assetFolder = publicId.slice(0, publicId.lastIndexOf("/"));
+    const assetFolder = publicId.slice(0, publicId.lastIndexOf('/'));
 
     this.logger.log(
-      `Uploading "${file.originalname}" → publicId "${publicId}" (folder "${assetFolder}")${toWebp ? " (→ WebP)" : ""}…`,
+      `Uploading "${file.originalname}" → publicId "${publicId}" (folder "${assetFolder}")${toWebp ? ' (→ WebP)' : ''}…`,
     );
 
     const result = await this.cloudinary.uploadBuffer(file.buffer, {
       publicId,
       assetFolder,
-      format: toWebp ? "webp" : undefined,
+      format: toWebp ? 'webp' : undefined,
       overwrite: true,
     });
 
@@ -213,7 +205,7 @@ export class MediaService {
       alt: dto.alt,
       width: result.width,
       height: result.height,
-      type: toWebp ? "image/webp" : file.mimetype,
+      type: toWebp ? 'image/webp' : file.mimetype,
       // Stored category is derived from ownerType: Projects / Blogs / Page /
       // Section / Experience / Education / Achievement / Settings / Raw
       category: categoryFor(dto.ownerType),
@@ -266,14 +258,12 @@ export class MediaService {
     }
 
     // Seeded local assets (publicId "local/…") aren't on Cloudinary — skip.
-    if (!media.publicId.startsWith("local/")) {
+    if (!media.publicId.startsWith('local/')) {
       try {
         await this.cloudinary.destroy(media.publicId);
       } catch (err: unknown) {
         // Log but don't block DB cleanup if Cloudinary delete fails
-        this.logger.warn(
-          `Cloudinary destroy failed for "${media.publicId}": ${String(err)}`,
-        );
+        this.logger.warn(`Cloudinary destroy failed for "${media.publicId}": ${String(err)}`);
       }
     }
 

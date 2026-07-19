@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AdminUser } from '@prisma/client';
 import { ContactService } from './contact.service';
 import { ComposeContactDto } from './dto/compose-contact.dto';
@@ -28,6 +29,9 @@ export class ContactController {
   // No guard: any visitor can submit the form.
   // createdById/updatedById remain NULL — visitor action, not admin.
 
+  // Stricter than the global 120/min throttle — spam protection for the
+  // public form: 5 submissions per 15 minutes per IP.
+  @Throttle({ default: { limit: 5, ttl: 900_000 } })
   @Post()
   @ApiOperation({ summary: 'Submit a contact form message (public)' })
   async create(@Body() dto: CreateContactDto) {
@@ -69,10 +73,7 @@ export class ContactController {
   @Post('compose')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Compose a new outbound email thread to any recipient' })
-  async compose(
-    @Body() dto: ComposeContactDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async compose(@Body() dto: ComposeContactDto, @CurrentUser() user: AdminUser) {
     return { data: await this.contactService.compose(dto, user.id) };
   }
 
@@ -99,10 +100,7 @@ export class ContactController {
   @Patch('threads/:id/read')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Mark a thread as read' })
-  async markRead(
-    @Param('id') id: string,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async markRead(@Param('id') id: string, @CurrentUser() user: AdminUser) {
     return { data: await this.contactService.markRead(id, user.id) };
   }
 

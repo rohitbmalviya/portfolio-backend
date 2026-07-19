@@ -20,9 +20,7 @@ export async function attachGalleryImages(
   prisma: PrismaService,
   sections: Section[],
 ): Promise<Section[]> {
-  const galleryIds = sections
-    .filter((s) => s.type === 'GALLERY')
-    .map((s) => s.id);
+  const galleryIds = sections.filter((s) => s.type === 'GALLERY').map((s) => s.id);
 
   if (galleryIds.length === 0) return sections;
 

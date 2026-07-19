@@ -1,12 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsArray,
-  IsEnum,
-  IsOptional,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { DefaultTheme } from '@prisma/client';
 
 /** A single social link — { type, value }. */

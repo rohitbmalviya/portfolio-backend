@@ -40,10 +40,7 @@ export class AchievementsController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create an achievement' })
-  async create(
-    @Body() dto: CreateAchievementDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async create(@Body() dto: CreateAchievementDto, @CurrentUser() user: AdminUser) {
     return { data: await this.achievementsService.create(dto, user.id) };
   }
 
@@ -51,10 +48,7 @@ export class AchievementsController {
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder achievements' })
-  async reorder(
-    @Body() dto: ReorderAchievementsDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async reorder(@Body() dto: ReorderAchievementsDto, @CurrentUser() user: AdminUser) {
     return { data: await this.achievementsService.reorder(dto, user.id) };
   }
 

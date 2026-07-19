@@ -1,12 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  ArrayMinSize,
-  IsArray,
-  IsInt,
-  IsString,
-  Min,
-  ValidateNested,
-} from 'class-validator';
+import { ArrayMinSize, IsArray, IsInt, IsString, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SectionOrderItem {

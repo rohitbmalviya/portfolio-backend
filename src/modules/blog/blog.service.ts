@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
-import { BlogPost, Media } from '@prisma/client';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { BlogPost, Media, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBlogPostDto } from './dto/create-blog-post.dto';
 import { UpdateBlogPostDto } from './dto/update-blog-post.dto';
@@ -127,6 +123,9 @@ export class BlogService {
 
   // ── Create ───────────────────────────────────────────────────────────
   async create(dto: CreateBlogPostDto, userId: string) {
+    // Friendlier pre-check message (best-effort — the P2002 catch below is
+    // the actual guarantee against the TOCTOU race between this check and
+    // the insert).
     const existing = await this.prisma.blogPost.findUnique({ where: { slug: dto.slug } });
     if (existing) {
       throw new ConflictException(`A blog post with slug "${dto.slug}" already exists.`);
@@ -134,22 +133,26 @@ export class BlogService {
 
     const { publishedAt, ...rest } = dto;
 
-    const post = await this.prisma.blogPost.create({
-      data: {
-        ...rest,
-        tags: rest.tags ?? [],
-        createdById: userId,
-        publishedAt:
-          rest.published && publishedAt
-            ? new Date(publishedAt)
-            : rest.published
-            ? new Date()
-            : null,
-      },
-    });
+    try {
+      const post = await this.prisma.blogPost.create({
+        data: {
+          ...rest,
+          tags: rest.tags ?? [],
+          createdById: userId,
+          publishedAt:
+            rest.published && publishedAt
+              ? new Date(publishedAt)
+              : rest.published
+                ? new Date()
+                : null,
+        },
+      });
 
-    // Newly created — no media linked yet (deferred-upload flow)
-    return mapBlogPost(post, []);
+      // Newly created — no media linked yet (deferred-upload flow)
+      return mapBlogPost(post, []);
+    } catch (error) {
+      this.handleUniqueViolation(error, dto.slug);
+    }
   }
 
   // ── Update ───────────────────────────────────────────────────────────
@@ -167,20 +170,37 @@ export class BlogService {
 
     const { publishedAt, ...rest } = dto;
 
-    const post = await this.prisma.blogPost.update({
-      where: { id },
-      data: {
-        ...rest,
-        ...(publishedAt !== undefined ? { publishedAt: new Date(publishedAt) } : {}),
-        ...(userId ? { updatedById: userId } : {}),
-      },
-    });
+    let post: BlogPost;
+    try {
+      post = await this.prisma.blogPost.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(publishedAt !== undefined ? { publishedAt: new Date(publishedAt) } : {}),
+          ...(userId ? { updatedById: userId } : {}),
+        },
+      });
+    } catch (error) {
+      this.handleUniqueViolation(error, dto.slug);
+    }
 
     const media = await this.prisma.media.findMany({
       where: { ownerType: 'blog', ownerId: id },
       orderBy: { order: 'asc' },
     });
     return mapBlogPost(post, media);
+  }
+
+  // ── Shared P2002 handler ───────────────────────────────────────────────
+  private handleUniqueViolation(error: unknown, slug?: string): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new ConflictException(
+        slug
+          ? `A blog post with slug "${slug}" already exists.`
+          : 'A blog post with this value already exists.',
+      );
+    }
+    throw error;
   }
 
   // ── Publish toggle ────────────────────────────────────────────────────

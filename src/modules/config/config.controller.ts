@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminUser } from '@prisma/client';
 import { ConfigService } from './config.service';
@@ -44,7 +37,7 @@ export class ConfigController {
   @UseGuards(JwtAuthGuard)
   @Patch(':key')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '[Admin] Update an option set\'s items' })
+  @ApiOperation({ summary: "[Admin] Update an option set's items" })
   async update(
     @Param('key') key: string,
     @Body() dto: UpdateConfigDto,

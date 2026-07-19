@@ -40,10 +40,7 @@ export class ExperienceController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create an experience entry' })
-  async create(
-    @Body() dto: CreateExperienceDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async create(@Body() dto: CreateExperienceDto, @CurrentUser() user: AdminUser) {
     return { data: await this.experienceService.create(dto, user.id) };
   }
 
@@ -51,10 +48,7 @@ export class ExperienceController {
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder experience entries' })
-  async reorder(
-    @Body() dto: ReorderExperienceDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async reorder(@Body() dto: ReorderExperienceDto, @CurrentUser() user: AdminUser) {
     return { data: await this.experienceService.reorder(dto, user.id) };
   }
 

@@ -41,10 +41,7 @@ export class SkillsController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create a skill' })
-  async create(
-    @Body() dto: CreateSkillDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async create(@Body() dto: CreateSkillDto, @CurrentUser() user: AdminUser) {
     return { data: await this.skillsService.create(dto, user.id) };
   }
 
@@ -52,10 +49,7 @@ export class SkillsController {
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder skills' })
-  async reorder(
-    @Body() dto: ReorderSkillsDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async reorder(@Body() dto: ReorderSkillsDto, @CurrentUser() user: AdminUser) {
     return { data: await this.skillsService.reorder(dto, user.id) };
   }
 

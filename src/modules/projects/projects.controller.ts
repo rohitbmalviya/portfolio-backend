@@ -27,13 +27,12 @@ export class ProjectsController {
 
   // ── GET /api/projects — public (published only) ──────────────────────────
   @Get()
-  @ApiOperation({ summary: 'List projects. Public: published only. ?featured=true to filter featured.' })
+  @ApiOperation({
+    summary: 'List projects. Public: published only. ?featured=true to filter featured.',
+  })
   @ApiQuery({ name: 'featured', required: false, type: Boolean })
   @ApiQuery({ name: 'admin', required: false, type: Boolean })
-  async findAll(
-    @Query('featured') featured?: string,
-    @Query('admin') admin?: string,
-  ) {
+  async findAll(@Query('featured') featured?: string, @Query('admin') admin?: string) {
     const isFeatured = featured === 'true' ? true : undefined;
     const data =
       admin === 'true'
@@ -55,10 +54,7 @@ export class ProjectsController {
   @Get(':slug')
   @ApiOperation({ summary: 'Get a project by slug. Pass ?admin=true for unpublished.' })
   @ApiQuery({ name: 'admin', required: false, type: Boolean })
-  async findOne(
-    @Param('slug') slug: string,
-    @Query('admin') admin?: string,
-  ) {
+  async findOne(@Param('slug') slug: string, @Query('admin') admin?: string) {
     const data =
       admin === 'true'
         ? await this.projectsService.findBySlugAdmin(slug)
@@ -71,10 +67,7 @@ export class ProjectsController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create a project' })
-  async create(
-    @Body() dto: CreateProjectDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async create(@Body() dto: CreateProjectDto, @CurrentUser() user: AdminUser) {
     return { data: await this.projectsService.create(dto, user.id) };
   }
 
@@ -83,10 +76,7 @@ export class ProjectsController {
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder projects' })
-  async reorder(
-    @Body() dto: ReorderProjectsDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async reorder(@Body() dto: ReorderProjectsDto, @CurrentUser() user: AdminUser) {
     return { data: await this.projectsService.reorder(dto, user.id) };
   }
 
@@ -95,10 +85,7 @@ export class ProjectsController {
   @Patch(':id/feature')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Toggle project featured status' })
-  async toggleFeatured(
-    @Param('id') id: string,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async toggleFeatured(@Param('id') id: string, @CurrentUser() user: AdminUser) {
     return { data: await this.projectsService.toggleFeatured(id, user.id) };
   }
 
@@ -107,10 +94,7 @@ export class ProjectsController {
   @Patch(':id/publish')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Toggle project published status' })
-  async togglePublished(
-    @Param('id') id: string,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async togglePublished(@Param('id') id: string, @CurrentUser() user: AdminUser) {
     return { data: await this.projectsService.togglePublished(id, user.id) };
   }
 

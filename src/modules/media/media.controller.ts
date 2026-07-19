@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -18,12 +19,14 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import { AdminUser } from '@prisma/client';
 import { MediaService } from './media.service';
 import { CreateMediaDto, UpdateMediaDto } from './dto/create-media.dto';
+import { ListMediaDto } from './dto/list-media.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { MAX_FILE_SIZE_BYTES } from './media.constants';
@@ -34,12 +37,22 @@ export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
   // ── GET /api/media — admin ───────────────────────────────────────────────
+  //
+  // Backward compatible: with no `page`/`pageSize` query params, the response
+  // shape is exactly `{ data: Media[] }` as before. Passing either param opts
+  // into `{ data: Media[], meta: { total, page, pageSize } }`.
   @UseGuards(JwtAuthGuard)
   @Get()
   @ApiBearerAuth()
-  @ApiOperation({ summary: '[Admin] List all uploaded media' })
-  async findAll() {
-    return { data: await this.mediaService.findAll() };
+  @ApiOperation({ summary: '[Admin] List all uploaded media (optionally paginated)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
+  async findAll(@Query() query: ListMediaDto) {
+    const result = await this.mediaService.findAll(query);
+    if (Array.isArray(result)) {
+      return { data: result };
+    }
+    return { data: result.items, meta: result.meta };
   }
 
   // ── POST /api/media — admin (multipart file upload) ──────────────────────
@@ -60,15 +73,20 @@ export class MediaController {
         },
         alt: { type: 'string', description: 'Optional alt text' },
         category: { type: 'string', description: 'Library bucket: "projects", "blogs", or "raw"' },
-        entitySlug: { type: 'string', description: 'Entity slug — required for projects/blogs category' },
+        entitySlug: {
+          type: 'string',
+          description: 'Entity slug — required for projects/blogs category',
+        },
         sequence: { type: 'integer', description: 'Image sequence within the entity (1-based)' },
         ownerId: {
           type: 'string',
-          description: 'ID of the owning entity — links the asset at upload time (deferred-upload flow)',
+          description:
+            'ID of the owning entity — links the asset at upload time (deferred-upload flow)',
         },
         ownerType: {
           type: 'string',
-          description: "Owner type: 'project' | 'blog' | 'experience' | 'education' | 'achievement' | 'page' | 'settings'",
+          description:
+            "Owner type: 'project' | 'blog' | 'experience' | 'education' | 'achievement' | 'page' | 'settings'",
         },
         usage: {
           type: 'string',
@@ -102,7 +120,9 @@ export class MediaController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ApiBearerAuth()
-  @ApiOperation({ summary: '[Admin] Update a media asset — reorder (order), alt text, usage, or category' })
+  @ApiOperation({
+    summary: '[Admin] Update a media asset — reorder (order), alt text, usage, or category',
+  })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateMediaDto,

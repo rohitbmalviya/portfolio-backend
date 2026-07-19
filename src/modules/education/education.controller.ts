@@ -40,10 +40,7 @@ export class EducationController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Create an education entry' })
-  async create(
-    @Body() dto: CreateEducationDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async create(@Body() dto: CreateEducationDto, @CurrentUser() user: AdminUser) {
     return { data: await this.educationService.create(dto, user.id) };
   }
 
@@ -51,10 +48,7 @@ export class EducationController {
   @Patch('reorder')
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Reorder education entries' })
-  async reorder(
-    @Body() dto: ReorderEducationDto,
-    @CurrentUser() user: AdminUser,
-  ) {
+  async reorder(@Body() dto: ReorderEducationDto, @CurrentUser() user: AdminUser) {
     return { data: await this.educationService.reorder(dto, user.id) };
   }
 

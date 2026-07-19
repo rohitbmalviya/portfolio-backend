@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { Media, Page, Prisma, Section } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePageDto } from './dto/create-page.dto';
@@ -21,10 +17,7 @@ function mapPage(page: Page, media: Media[]) {
   };
 }
 
-function mapPageWithSections(
-  page: Page & { sections: Section[] },
-  media: Media[],
-) {
+function mapPageWithSections(page: Page & { sections: Section[] }, media: Media[]) {
   const ogMedia = media[0] ?? null;
   return {
     ...page,
@@ -230,10 +223,7 @@ export class PagesService {
 
   // ── Shared P2002 handler ─────────────────────────────────────────────────
   private handleUniqueViolation(error: unknown): never {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    ) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       const field = (error.meta?.target as string[] | undefined)?.[0];
       if (field === 'slug') {
         throw new ConflictException('A page with this slug already exists.');

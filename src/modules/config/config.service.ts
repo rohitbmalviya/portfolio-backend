@@ -1,10 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import {
-  SectionType,
-  SkillLevel,
-  DefaultTheme,
-  Prisma,
-} from '@prisma/client';
+import { SectionType, SkillLevel, DefaultTheme, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateConfigDto } from './dto/update-config.dto';
 
