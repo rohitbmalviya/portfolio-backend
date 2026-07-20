@@ -35,7 +35,7 @@ describe('AuthController', () => {
   });
 
   describe('login', () => {
-    it('sets both access_token and refresh_token cookies, with refresh_token scoped to /api/auth', async () => {
+    it('sets both access_token and refresh_token cookies with proxy-compatible root path', async () => {
       const tokens = { accessToken: 'access-123', refreshToken: 'refresh-456' };
       authService.login.mockResolvedValue({ user: { id: 'u1', email: 'a@b.com' }, tokens });
       const res = mockResponse();
@@ -51,7 +51,7 @@ describe('AuthController', () => {
       expect(res.cookie).toHaveBeenCalledWith(
         'refresh_token',
         'refresh-456',
-        expect.objectContaining({ path: '/api/auth', httpOnly: true }),
+        expect.objectContaining({ path: '/', httpOnly: true }),
       );
       expect(result).toEqual({
         data: {
@@ -76,7 +76,7 @@ describe('AuthController', () => {
       );
       expect(res.clearCookie).toHaveBeenCalledWith(
         'refresh_token',
-        expect.objectContaining({ path: '/api/auth' }),
+        expect.objectContaining({ path: '/' }),
       );
       expect(result).toEqual({ data: { message: 'Logged out successfully.' } });
     });
@@ -112,7 +112,7 @@ describe('AuthController', () => {
       expect(res.cookie).toHaveBeenCalledWith(
         'refresh_token',
         'new-refresh',
-        expect.objectContaining({ path: '/api/auth' }),
+        expect.objectContaining({ path: '/' }),
       );
       expect(result).toEqual({ data: { accessToken: 'new-access', refreshToken: 'new-refresh' } });
     });

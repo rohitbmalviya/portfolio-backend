@@ -1,0 +1,121 @@
+# =====================================================================
+#  docker-compose.yml — LOCAL DEVELOPMENT ONLY
+#
+#  This is NOT used by Cloud Run (production deploys build the image
+#  directly from ./Dockerfile via `gcloud`/CI — no compose involved) and
+#  the Dockerfile itself contains zero compose-only assumptions. This
+#  file just wires the same image to a local, disposable Postgres.
+#
+#  Usage — see README.md "Local development with Docker Compose" for the
+#  full walkthrough (migrations, seeding, resetting).
+#    docker compose up --build
+#    docker compose down -v      # wipe the db volume for a clean slate
+#
+#  Env var resolution (two independent layers, don't confuse them):
+#    - `${VAR:-default}` below is resolved by the Compose CLI itself at
+#      `docker compose ...` time, from your shell env or from a literal
+#      `.env` file in this same directory (Compose auto-loads it — this
+#      is the repo's real .env with your actual Cloudinary/Gmail/JWT
+#      values, already git-ignored). If a var isn't set there, the
+#      `:-default` after the colon is used instead.
+#    - DATABASE_URL, PORT, NODE_ENV and CORS_ORIGINS are deliberately
+#      hardcoded (not templated) below — local compose always talks to
+#      the `db` service on port 5432 internally, always listens on 4000,
+#      and always runs as NODE_ENV=development, regardless of what your
+#      .env says for a bare-metal / Cloud Run run.
+# =====================================================================
+
+services:
+  # ── PostgreSQL 16 — disposable local database ──────────────────────
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-portfolio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-portfolio_local_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-portfolio}
+    # 5433 on the host — many devs already have a local Postgres on 5432;
+    # this avoids clashing with it. Inside the compose network the api
+    # container always reaches this service at db:5432 (see DATABASE_URL
+    # below), so the host-side port only matters if you want to connect
+    # from DBeaver/psql on your machine (localhost:5433).
+    ports:
+      - '5433:5432'
+    volumes:
+      - portfolio_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-portfolio} -d ${POSTGRES_DB:-portfolio}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # ── NestJS API — built from the same production Dockerfile ─────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '4000:4000'
+    # No restart policy on purpose: if the app crashes at boot (e.g. a
+    # genuinely missing required env var), you want `docker compose up`
+    # to show that failure once, not hide it behind endless restarts.
+    environment:
+      NODE_ENV: development
+      PORT: '4000'
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+
+      # Always the compose `db` service — intentionally NOT templated
+      # from your .env, which normally points at a host Postgres instead.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-portfolio}:${POSTGRES_PASSWORD:-portfolio_local_pw}@db:5432/${POSTGRES_DB:-portfolio}?schema=public
+
+      # ── Auth — dev-only defaults, overridden if your .env sets them ──
+      JWT_SECRET: ${JWT_SECRET:-dev_only_jwt_secret_change_me}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_only_jwt_refresh_secret_change_me}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+
+      # ── Admin seed (used by `prisma db seed`, see README) ────────────
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ChangeMe123!}
+      ADMIN_NAME: ${ADMIN_NAME:-Local Admin}
+
+      # ── Cloudinary — CloudinaryProvider.onModuleInit() calls
+      # ConfigService.getOrThrow() for all three of these at boot, so the
+      # API will NOT start if any is truly unset. The dummy defaults below
+      # only satisfy that boot-time check; actual upload/destroy calls to
+      # Cloudinary will fail (rejected by Cloudinary, not a local crash)
+      # until you put real credentials in your .env. See
+      # src/modules/media/cloudinary.provider.ts.
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-demo}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-demo_key}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-demo_secret}
+      CLOUDINARY_UPLOAD_FOLDER: ${CLOUDINARY_UPLOAD_FOLDER:-portfolio}
+
+      # ── Gmail — read directly from process.env (not ConfigService) by
+      # GmailService, which already no-ops gracefully when these are
+      # empty (isConfigured() returns false; contact form still saves to
+      # the DB, just skips sending/syncing email). Left blank by default
+      # rather than faked with dummy values, so the feature stays
+      # correctly "disabled" instead of throwing real Google OAuth errors
+      # against a fake refresh token. Set these in your .env for the full
+      # two-way sync locally. See src/modules/contact/gmail.service.ts.
+      GMAIL_USER: ${GMAIL_USER:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN:-}
+      # GMAIL_SYNC_CRON intentionally NOT set here: the code does
+      # `process.env['GMAIL_SYNC_CRON'] ?? '*/2 * * * *'`, which only
+      # falls back on a truly-*unset* var, not an empty string — setting
+      # it to '' here would pass an invalid empty cron expression to
+      # @nestjs/schedule and crash boot. If you need a custom local
+      # cron cadence, add `GMAIL_SYNC_CRON: "*/10 * * * *"` yourself.
+
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+      ADMIN_MESSAGES_URL: ${ADMIN_MESSAGES_URL:-http://localhost:3000/admin/messages}
+      CRON_SECRET: ${CRON_SECRET:-}
+
+volumes:
+  portfolio_db_data:

@@ -3,11 +3,13 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -65,6 +67,34 @@ export class ContactController {
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Admin] Manually trigger Gmail thread sync' })
   async sync() {
+    return { data: await this.contactService.syncAll() };
+  }
+
+  // ── CLOUD SCHEDULER — shared-secret sync (no JWT) ────────────────────────
+  //
+  // Cloud Run scales to zero and throttles CPU between requests, so the
+  // in-process @nestjs/schedule cron (ContactSyncTask) cannot be relied on
+  // to fire on schedule there. Cloud Scheduler instead calls this endpoint
+  // on a fixed interval (see DEPLOYMENT.md). It runs the exact same
+  // ContactService.syncAll() as the guarded /sync route above, but is
+  // authenticated with a shared secret header instead of a JWT, since
+  // Cloud Scheduler has no admin session.
+  //
+  // Deliberately fails closed: an unset CRON_SECRET must NOT mean "open
+  // access" — both a missing/mismatched header AND a missing env var
+  // result in 401, and syncAll() is never called in either case.
+  //
+  // No @Throttle override here: the global limit (120 req/60s per IP) is
+  // far above a "every few minutes" Cloud Scheduler call.
+  @Post('sync-cron')
+  @ApiOperation({
+    summary: '[Cloud Scheduler] Trigger Gmail thread sync via shared-secret header (no JWT)',
+  })
+  async syncCron(@Headers('x-cron-secret') cronSecret?: string) {
+    const expected = process.env['CRON_SECRET'];
+    if (!expected || cronSecret !== expected) {
+      throw new UnauthorizedException();
+    }
     return { data: await this.contactService.syncAll() };
   }
 

@@ -29,9 +29,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Pin Node to match CI + local (Render defaults to the latest, e.g. 24)
+      # Pin Node to match CI + local + Docker (Node 24 everywhere)
       - key: NODE_VERSION
-        value: "20"
+        value: "24"
       # ── Database (Neon) — use the DIRECT (non-pooled) connection string:
       #    a single Render instance holds few connections, and Prisma
       #    migrations require a direct connection anyway.

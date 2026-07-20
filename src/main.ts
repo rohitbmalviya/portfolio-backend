@@ -42,10 +42,15 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
+  // Cloud Run injects PORT (default 8080 in production) and requires the
+  // process to bind ALL interfaces, not just localhost — Node's default
+  // (no host arg) already binds all interfaces, but we set it explicitly
+  // so this never silently regresses to '127.0.0.1'/'localhost' in some
+  // future refactor.
   const port = config.get<number>('PORT') ?? 4000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
-  console.log(`🚀 Portfolio API running on http://localhost:${port}/api`);
+  console.log(`🚀 Portfolio API running on http://0.0.0.0:${port}/api`);
 }
 
 void bootstrap();

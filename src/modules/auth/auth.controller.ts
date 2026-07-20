@@ -51,11 +51,13 @@ const accessCookieOptions = {
   maxAge: parseDurationMs(process.env['JWT_EXPIRES_IN'] ?? DEFAULT_ACCESS_EXPIRES_IN),
 };
 
-// Scoped to /api/auth — the browser only sends the refresh cookie to auth
-// endpoints (refresh/logout), never to unrelated API routes.
+// Path must be '/' — the admin frontend reaches this API through a Next.js
+// rewrite (/backend-api/* → /api/*), and cookie paths are not rewritten by
+// the proxy: a cookie scoped to /api/auth would never be sent to
+// /backend-api/auth/refresh, silently breaking the silent-refresh flow.
 const refreshCookieOptions = {
   ...baseCookieOptions,
-  path: '/api/auth',
+  path: '/',
   maxAge: parseDurationMs(process.env['JWT_REFRESH_EXPIRES_IN'] ?? DEFAULT_REFRESH_EXPIRES_IN),
 };
 

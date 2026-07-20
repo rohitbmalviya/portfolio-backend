@@ -269,6 +269,85 @@ npm run db:reset              # wraps `prisma migrate reset`
 
 ---
 
+## Local development with Docker Compose
+
+An alternative to the "Getting Started" flow above — runs the same
+production Dockerfile against a disposable, containerized Postgres. Useful
+when you don't want to install/manage Postgres locally, or want to sanity-check
+the actual production image before deploying.
+
+```bash
+docker compose up --build
+```
+
+**What runs where:**
+
+| Service | Image | Host port | Purpose |
+|---|---|---|---|
+| `db` | `postgres:16-alpine` | `5433` → `5432` | Disposable local Postgres (named volume `portfolio_db_data`) |
+| `api` | built from `./Dockerfile` | `4000` → `4000` | The NestJS API, same image that ships to Cloud Run |
+
+Port `5433` (not the default `5432`) is used on the host side specifically so
+this doesn't clash with a Postgres instance you might already have running
+locally. `docker compose exec`/inside the compose network, `api` always
+reaches the database at `db:5432`.
+
+Once both containers are up, the API is at `http://localhost:4000/api`
+(Swagger at `http://localhost:4000/api/docs`).
+
+**Migrations run automatically.** The image's `CMD` runs
+`npx prisma migrate deploy && exec node dist/main` on every container start —
+on a fresh volume this applies the one existing migration before the app
+starts listening; on subsequent restarts it's a no-op (already-applied
+migrations are skipped).
+
+**Credentials:** `docker-compose.yml` reads `${VAR:-default}` values that
+Compose resolves from this directory's real `.env` file when present (falling
+back to harmless local-dev defaults otherwise) — so if your `.env` already has
+real Cloudinary/Gmail/JWT values, compose picks them up automatically; nothing
+extra to configure. `DATABASE_URL`, `PORT`, `NODE_ENV`, and `CORS_ORIGINS` are
+always fixed to the compose-local values regardless of your `.env` (see the
+comments in `docker-compose.yml`). Two things worth knowing:
+- Cloudinary env vars are read eagerly at boot (`CloudinaryProvider.onModuleInit`
+  calls `ConfigService.getOrThrow`), so the API will refuse to start if they're
+  completely unset — compose supplies dummy values (`demo`/`demo_key`/`demo_secret`)
+  so it always boots; actual media uploads simply fail until you add real
+  credentials to `.env`.
+- Gmail env vars are left blank by default (not faked) — the app already
+  handles this gracefully (`GmailService.isConfigured()` returns `false`), so
+  the contact form still saves messages to the DB, it just skips sending/syncing
+  email, rather than throwing real Google OAuth errors against a fake token.
+
+**Seeding:** the production image intentionally does **not** include
+`ts-node` (it's a devDependency, kept out of `--omit=dev` to keep the image
+lean), so `docker compose exec api npx prisma db seed` will fail with
+`spawn ts-node ENOENT`. Run the seed from your host instead, pointed at the
+container's published port:
+
+```bash
+DATABASE_URL="postgresql://portfolio:portfolio_local_pw@localhost:5433/portfolio?schema=public" npx prisma db seed
+```
+
+(Swap in your own `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` if you
+overrode the compose defaults.)
+
+**No source bind-mount / no live reload:** this compose file builds the image
+from source rather than mounting your working tree into the container (bind
+mounts of paths under `~/Desktop` fail with a permission error on some
+machines, independent of Docker Compose itself). After changing source code,
+re-run `docker compose up --build` to rebuild before testing — this is a
+build-based workflow, not a hot-reload dev server. For iterative day-to-day
+development, `npm run start:dev` against a local or containerized Postgres
+(see "Getting Started" above) is faster.
+
+**Resetting:**
+
+```bash
+docker compose down -v   # stops containers AND deletes the db volume — next `up` starts from a truly empty database
+```
+
+---
+
 ## API Overview
 
 | Base path | Description |

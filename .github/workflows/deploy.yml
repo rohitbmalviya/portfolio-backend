@@ -1,31 +1,107 @@
 # ─────────────────────────────────────────────────────────────
-#  Deploy — portfolio-backend (MANUAL)
-#  Run from GitHub → Actions → "Deploy" → "Run workflow".
-#  Triggers Render's deploy hook, which builds & deploys the
-#  latest commit on main. Auto-deploy on push is disabled
-#  (render.yaml: autoDeployTrigger: off).
+#  Deploy — portfolio-backend → Google Cloud Run (MANUAL)
+#  Run from GitHub → Actions → "Deploy to Cloud Run" → "Run workflow".
 #
-#  Setup (once): Render dashboard → service → Settings →
-#  Deploy Hook → copy the URL → GitHub repo → Settings →
-#  Secrets and variables → Actions → new secret:
-#    RENDER_DEPLOY_HOOK_URL = <that URL>
+#  This workflow builds the image from this repo's Dockerfile via Cloud
+#  Build, pushes it to Artifact Registry, then deploys it to Cloud Run.
+#  It does NOT set application secrets/env vars on the service — those
+#  are configured once on the Cloud Run service itself (console, or
+#  `gcloud run services update --set-env-vars` / `--set-secrets`; see
+#  DEPLOYMENT.md). A normal deploy here therefore never touches
+#  DATABASE_URL, JWT_SECRET, CRON_SECRET, etc. — only the container
+#  image changes.
+#
+#  ── One-time setup ──────────────────────────────────────────────────
+#  1. Enable APIs: run.googleapis.com, artifactregistry.googleapis.com,
+#     cloudbuild.googleapis.com (see DEPLOYMENT.md).
+#  2. Create an Artifact Registry Docker repo (see DEPLOYMENT.md).
+#  3. Create a deploy service account with roles:
+#       roles/run.admin, roles/artifactregistry.writer,
+#       roles/iam.serviceAccountUser, roles/cloudbuild.builds.editor
+#  4. Auth option A (used below) — Service account key:
+#       gcloud iam service-accounts keys create key.json \
+#         --iam-account=DEPLOY_SA@PROJECT_ID.iam.gserviceaccount.com
+#     → GitHub repo → Settings → Secrets and variables → Actions →
+#       New secret: GCP_SA_KEY = <contents of key.json>
+#     Auth option B (recommended long-term, no long-lived key to leak) —
+#     Workload Identity Federation: create a Workload Identity Pool +
+#     Provider trusting token.actions.githubusercontent.com, then swap
+#     the `auth` step below for:
+#       - uses: google-github-actions/auth@<sha>
+#         with:
+#           workload_identity_provider: projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>
+#           service_account: DEPLOY_SA@PROJECT_ID.iam.gserviceaccount.com
+#     See https://github.com/google-github-actions/auth#setup for the
+#     one-time `gcloud iam workload-identity-pools` commands.
+#  5. Repo variables (Settings → Secrets and variables → Actions →
+#     Variables tab) — all optional, defaults shown below:
+#       GCP_PROJECT_ID  (required, no default)
+#       GCP_REGION      (default: asia-south1)
+#       ARTIFACT_REPO   (default: portfolio-backend)
+#       SERVICE_NAME    (default: portfolio-backend)
 # ─────────────────────────────────────────────────────────────
-name: Deploy
+name: Deploy to Cloud Run
 
 on:
   workflow_dispatch:
 
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION || 'asia-south1' }}
+  REPOSITORY: ${{ vars.ARTIFACT_REPO || 'portfolio-backend' }}
+  SERVICE: ${{ vars.SERVICE_NAME || 'portfolio-backend' }}
+
 jobs:
   deploy:
-    name: deploy
+    name: build-and-deploy
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # only needed if you switch to Workload Identity Federation
     steps:
-      - name: Trigger Render deploy
-        env:
-          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Guard — required config present
         run: |
-          if [ -z "$HOOK" ]; then
-            echo "::error::RENDER_DEPLOY_HOOK_URL secret is not set"; exit 1
+          if [ -z "${{ env.PROJECT_ID }}" ]; then
+            echo "::error::Repo variable GCP_PROJECT_ID is not set (Settings → Secrets and variables → Actions → Variables)."; exit 1
           fi
-          curl -fsS -X POST "$HOOK"
-          echo "✅ Render deploy triggered — watch progress in the Render dashboard."
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "::error::Secret GCP_SA_KEY is not set."; exit 1
+          fi
+
+      # Auth option A: service-account JSON key (see header comment for
+      # the Workload Identity Federation alternative).
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+
+      - name: Build and push image via Cloud Build
+        id: build
+        run: |
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:${{ github.sha }}"
+          gcloud builds submit --tag "$IMAGE" .
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      # Deploys the new image only. Env vars / secrets on the Cloud Run
+      # service are intentionally left untouched here (no --update-env-vars
+      # / env_vars input) — they're managed directly on the service
+      # (console or `gcloud run services update`), never from CI, so a
+      # routine image deploy can never accidentally wipe or leak them.
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@251330ba9a8a34bfbc1622895f42e1d53fd14522 # v2.7.6
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          project_id: ${{ env.PROJECT_ID }}
+          image: ${{ steps.build.outputs.image }}
+          flags: --allow-unauthenticated --min-instances=0 --max-instances=1 --memory=512Mi
+
+      - name: Show deployed URL
+        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
