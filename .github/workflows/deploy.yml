@@ -88,11 +88,15 @@ jobs:
           gcloud builds submit --tag "$IMAGE" .
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-      # Deploys the new image only. Env vars / secrets on the Cloud Run
-      # service are intentionally left untouched here (no --update-env-vars
-      # / env_vars input) — they're managed directly on the service
-      # (console or `gcloud run services update`), never from CI, so a
-      # routine image deploy can never accidentally wipe or leak them.
+      # App configuration is managed as GitHub repo secrets and applied to
+      # the Cloud Run service on every deploy (env_vars below, merge
+      # strategy). GitHub is the single source of truth: to change a value,
+      # edit the repo secret and re-run this workflow. Secret names must
+      # match exactly — a missing secret deploys as an EMPTY value and the
+      # container will fail at boot (DATABASE_URL / CLOUDINARY_* are
+      # hard-required by startup).
+      # NOTE: values must not contain commas (the action splits on them) —
+      # fine for single-origin CORS_ORIGINS; revisit if adding a second origin.
       - name: Deploy to Cloud Run
         id: deploy
         uses: google-github-actions/deploy-cloudrun@251330ba9a8a34bfbc1622895f42e1d53fd14522 # v2.7.6
@@ -102,6 +106,29 @@ jobs:
           project_id: ${{ env.PROJECT_ID }}
           image: ${{ steps.build.outputs.image }}
           flags: --allow-unauthenticated --min-instances=0 --max-instances=1 --memory=512Mi
+          env_vars_update_strategy: merge
+          env_vars: |-
+            NODE_ENV=production
+            JWT_EXPIRES_IN=1d
+            JWT_REFRESH_EXPIRES_IN=7d
+            CLOUDINARY_UPLOAD_FOLDER=portfolio
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+            CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+            SITE_URL=${{ secrets.SITE_URL }}
+            ADMIN_MESSAGES_URL=${{ secrets.ADMIN_MESSAGES_URL }}
+            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+            GMAIL_USER=${{ secrets.GMAIL_USER }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GOOGLE_REFRESH_TOKEN=${{ secrets.GOOGLE_REFRESH_TOKEN }}
+            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            ADMIN_NAME=${{ secrets.ADMIN_NAME }}
+            CRON_SECRET=${{ secrets.CRON_SECRET }}
 
       - name: Show deployed URL
         run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
